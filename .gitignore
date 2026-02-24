@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.pyc
+__pycache__/
+*.egg-info/
+.vite/
+backend/data/uploads/*
+!backend/data/uploads/.gitkeep
+.DS_Store
