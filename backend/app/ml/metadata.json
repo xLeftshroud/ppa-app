@@ -2,9 +2,10 @@
   "model_name": "PPA_PIPELINE",
   "model_version": "XGBoost_OptunaTPE",
   "features_version": "v1",
-  "sklearn_version": "1.7.2",
-  "numpy_version": "2.3.5",
+  "sklearn_version": "1.8.0",
+  "numpy_version": "2.4.2",
   "cat_columns": [
+    "product_sku_code",
     "customer",
     "top_brand",
     "flavor_internal",
@@ -14,9 +15,10 @@
     "promotion_indicator",
     "pack_size_internal",
     "units_per_package_internal",
-    "price_per_litre",
-    "week_sin",
-    "week_cos"
+    "price_per_litre"
   ],
-  "target_column": "nielsen_total_volume"
+  "price_per_litre": {
+    "p1": 0.61245,
+    "p99": 3.90167333317
+  }
 }

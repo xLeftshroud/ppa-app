@@ -34,16 +34,21 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         raise ValidationError(f"SKU {req.product_sku_code} not found in dataset")
 
     # --- Baseline ---
+    bl_raw = get_baseline(df, req.product_sku_code, req.customer)
+    baseline_yearweek = bl_raw["yearweek"]
+
     if req.baseline_override_price_per_litre is not None:
-        bl_raw = get_baseline(df, req.product_sku_code, req.customer)
         baseline_price = req.baseline_override_price_per_litre
-        baseline_volume = bl_raw["volume_units"]
-        baseline_yearweek = bl_raw["yearweek"]
+        # Predict volume at the overridden baseline price
+        try:
+            bl_df = build_feature_df([baseline_price], req.customer,
+                                     req.promotion_indicator, req.week, sku_attrs)
+            baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
+        except Exception as exc:
+            raise InferenceError(f"Baseline volume prediction failed: {exc}")
     else:
-        bl_raw = get_baseline(df, req.product_sku_code, req.customer)
         baseline_price = bl_raw["price_per_litre"]
         baseline_volume = bl_raw["volume_units"]
-        baseline_yearweek = bl_raw["yearweek"]
 
     # --- 41-point curve ---
     pct_grid = list(range(-100, 105, 5))  # [-100, -95, ..., 0, ..., 95, 100]
