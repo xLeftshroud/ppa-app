@@ -56,39 +56,39 @@ export function DemandCurveChart({
 
   const { curve, selected, baseline } = result;
 
-  // Build markLine data for boundary lines at p1, p5, p95, p99
+  // Build markLine + markArea on the main line series so they share the same axis mapping
   const boundaryLines: object[] = [];
+  const shadedAreas: object[][] = [];
   if (priceRange) {
+    const prices = curve.map((p: CurvePoint) => p.price_per_litre);
+    const minX = Math.min(...prices);
+    const maxX = Math.max(...prices);
+    const { p1, p5, p95, p99 } = priceRange;
+
     const dashed = { type: "dashed" as const, color: "#ea580c", width: 1.5 };
-    for (const key of ["p1", "p5", "p95", "p99"] as const) {
+    for (const [key, val] of [["P1", p1], ["P5", p5], ["P95", p95], ["P99", p99]] as const) {
       boundaryLines.push({
-        xAxis: priceRange[key],
+        xAxis: val,
         lineStyle: dashed,
         label: {
-          formatter: key.toUpperCase(),
+          formatter: key,
           position: "insideEndTop" as const,
           fontSize: 10,
           color: "#ea580c",
         },
       });
     }
-  }
 
-  // Build markArea data for shaded regions
-  const shadedAreas: object[][] = [];
-  if (priceRange) {
-    const prices = curve.map((p: CurvePoint) => p.price_per_litre);
-    const minX = Math.min(...prices);
-    const maxX = Math.max(...prices);
-    // Light red (p99 extreme): [min, p1] and [p99, max]
+    const areaStyle = (c: string) => ({ color: c, borderColor: "transparent", borderWidth: 0, opacity: 1 });
+    // Red extreme zones: [min, p1] and [p99, max]
     shadedAreas.push(
-      [{ xAxis: minX, itemStyle: { color: "rgba(239,68,68,0.15)" } }, { xAxis: priceRange.p1 }],
-      [{ xAxis: priceRange.p99, itemStyle: { color: "rgba(239,68,68,0.15)" } }, { xAxis: maxX }],
+      [{ xAxis: minX, itemStyle: areaStyle("rgba(239,68,68,0.15)") }, { xAxis: p1 }],
+      [{ xAxis: p99, itemStyle: areaStyle("rgba(239,68,68,0.15)") }, { xAxis: maxX }],
     );
-    // Light orange (p5/p95 moderate): [p1, p5] and [p95, p99]
+    // Orange moderate zones: [p1, p5] and [p95, p99]
     shadedAreas.push(
-      [{ xAxis: priceRange.p1, itemStyle: { color: "rgba(249,115,22,0.15)" } }, { xAxis: priceRange.p5 }],
-      [{ xAxis: priceRange.p95, itemStyle: { color: "rgba(249,115,22,0.15)" } }, { xAxis: priceRange.p99 }],
+      [{ xAxis: p1, itemStyle: areaStyle("rgba(249,115,22,0.15)") }, { xAxis: p5 }],
+      [{ xAxis: p95, itemStyle: areaStyle("rgba(249,115,22,0.15)") }, { xAxis: p99 }],
     );
   }
 
@@ -116,13 +116,13 @@ export function DemandCurveChart({
         return lines.join("<br/>");
       },
     },
-    grid: { left: 80, right: 30, top: 40, bottom: 70 },
+    grid: { left: 80, right: 20, top: 40, bottom: 70 },
     xAxis: {
       type: "value" as const,
       name: "Price per Litre",
       nameLocation: "middle" as const,
       nameGap: 30,
-      axisLabel: { formatter: (v: number) => v.toFixed(2) },
+      axisLabel: { formatter: (v: number) => v.toFixed(4) },
     },
     yAxis: {
       type: "value" as const,
@@ -139,11 +139,11 @@ export function DemandCurveChart({
     series: [
       {
         type: "line" as const,
-        smooth: true,
+        smooth: false,
         data: curve.map((p: CurvePoint) => [p.price_per_litre, p.predicted_volume_units]),
         lineStyle: { width: 2, color: "#2563eb" },
         itemStyle: { color: "#2563eb" },
-        symbolSize: 4,
+        showSymbol: false,
         markPoint: {
           data: [
             {
@@ -170,10 +170,10 @@ export function DemandCurveChart({
           },
         },
         markLine: boundaryLines.length > 0
-          ? { silent: true, symbol: "none", data: boundaryLines }
+          ? { silent: true, symbol: "none", animation: false, data: boundaryLines }
           : undefined,
         markArea: shadedAreas.length > 0
-          ? { silent: true, data: shadedAreas }
+          ? { silent: true, animation: false, data: shadedAreas }
           : undefined,
       },
     ],
