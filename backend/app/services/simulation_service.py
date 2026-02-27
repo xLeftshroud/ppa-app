@@ -17,6 +17,7 @@ from app.services.baseline_service import get_baseline
 from app.services.catalog_service import get_sku_attributes
 from app.services.dataset_service import get_dataset
 from app.services.pipeline_service import get_metadata, get_pipeline
+from app.services.price_range_service import get_price_range
 from app.utils.error_handler import InferenceError, ValidationError
 from app.utils.feature_builder import build_feature_df
 
@@ -51,39 +52,49 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         baseline_price = bl_raw["price_per_litre"]
         baseline_volume = bl_raw["volume_units"]
 
-    # --- 41-point curve ---
+    # --- Curve: coarse 41-point grid + fine 0.01-step within [p1, p99] ---
     pct_grid = list(range(-100, 105, 5))  # [-100, -95, ..., 0, ..., 95, 100]
-    price_list = [max(0.01, baseline_price * (1 + pct / 100)) for pct in pct_grid]
+    coarse_prices = [max(0.01, baseline_price * (1 + pct / 100)) for pct in pct_grid]
 
-    # Deduplicate prices (keep mapping from pct to price)
-    unique_prices: list[float] = []
-    seen: set[float] = set()
-    for p in price_list:
-        rounded = round(p, 6)
-        if rounded not in seen:
-            seen.add(rounded)
-            unique_prices.append(p)
+    # Fine-grained points within SKU-specific [p1, p99]
+    sku_range = get_price_range(req.product_sku_code)
+    fine_prices: list[float] = []
+    if sku_range:
+        p1_val = sku_range["p1"]
+        p99_val = sku_range["p99"]
+        p = round(p1_val, 2)
+        while p <= p99_val:
+            fine_prices.append(round(p, 4))
+            p = round(p + 0.01, 4)
 
-    # Batch predict for curve
+    # Merge and deduplicate all prices, sorted
+    all_prices_set: dict[float, None] = {}
+    for p in coarse_prices + fine_prices:
+        all_prices_set[round(p, 4)] = None
+    all_prices_sorted = sorted(all_prices_set.keys())
+
+    # Batch predict for entire curve
     try:
-        curve_df = build_feature_df(unique_prices, req.customer,
+        curve_df = build_feature_df(all_prices_sorted, req.customer,
                                     req.promotion_indicator, req.week, sku_attrs,
                                     req.product_sku_code)
         curve_volumes = pipeline.predict(curve_df)
     except Exception as exc:
         raise InferenceError(f"Curve prediction failed: {exc}")
 
-    # Map unique prices back to volumes
+    # Build price -> volume mapping
     price_to_vol: dict[float, float] = {}
-    for price, vol in zip(unique_prices, curve_volumes):
-        price_to_vol[round(price, 6)] = float(vol)
+    for price, vol in zip(all_prices_sorted, curve_volumes):
+        price_to_vol[round(price, 4)] = float(vol)
 
+    # Build curve points sorted by price
     curve_points: list[CurvePoint] = []
-    for pct, price in zip(pct_grid, price_list):
-        vol = price_to_vol[round(price, 6)]
+    for price in all_prices_sorted:
+        vol = price_to_vol[round(price, 4)]
+        pct = (price / baseline_price - 1) * 100 if baseline_price > 0 else 0.0
         curve_points.append(CurvePoint(
-            price_change_pct=float(pct),
-            price_per_litre=round(price, 6),
+            price_change_pct=round(pct, 4),
+            price_per_litre=round(price, 4),
             predicted_volume_units=round(vol, 2),
         ))
 
