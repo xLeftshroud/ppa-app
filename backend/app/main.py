@@ -4,9 +4,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.services.pipeline_service import load_pipeline
+from app.services.price_range_service import load_training_csv
 from app.utils.error_handler import RequestIdMiddleware, register_exception_handlers
 from app.utils.logging_config import setup_logging
-from app.routers import datasets, catalog, baseline, simulate
+from app.routers import datasets, catalog, baseline, simulate, price_range
 
 
 setup_logging()
@@ -15,6 +16,7 @@ setup_logging()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_pipeline()
+    load_training_csv()
     yield
 
 
@@ -35,6 +37,7 @@ app.include_router(datasets.router, prefix="/v1")
 app.include_router(catalog.router, prefix="/v1")
 app.include_router(baseline.router, prefix="/v1")
 app.include_router(simulate.router, prefix="/v1")
+app.include_router(price_range.router, prefix="/v1")
 
 
 @app.get("/health")

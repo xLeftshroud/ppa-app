@@ -6,9 +6,11 @@ import { WeekInput } from "@/components/inputs/WeekInput";
 import { BaselinePriceInput } from "@/components/inputs/BaselinePriceInput";
 import { PriceSlider } from "@/components/inputs/PriceSlider";
 import { ResultsCard } from "@/components/results/ResultsCard";
+import { PriceRangeCard } from "@/components/results/PriceRangeCard";
 import { DemandCurveChart } from "@/components/results/DemandCurveChart";
 import { WarningsBanner } from "@/components/results/WarningsBanner";
 import { useSimulate } from "@/hooks/useSimulate";
+import { usePriceRange } from "@/hooks/usePriceRange";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/api/client";
@@ -17,7 +19,9 @@ import { useEffect } from "react";
 
 export function HomePage() {
   const datasetId = useAppStore((s) => s.datasetId);
+  const selectedSku = useAppStore((s) => s.selectedSku);
   const { isLoading, isFetching, error, canSimulate } = useSimulate();
+  const { data: priceRange } = usePriceRange(selectedSku);
 
   useEffect(() => {
     if (error) {
@@ -73,7 +77,8 @@ export function HomePage() {
       <div className="flex-1 space-y-4 min-w-0">
         <WarningsBanner />
         <ResultsCard isLoading={isLoading || isFetching} />
-        <DemandCurveChart isLoading={isLoading || isFetching} />
+        <PriceRangeCard priceRange={priceRange ?? null} />
+        <DemandCurveChart isLoading={isLoading || isFetching} priceRange={priceRange ?? null} />
       </div>
     </div>
   );
