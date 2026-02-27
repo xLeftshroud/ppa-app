@@ -11,6 +11,7 @@ def build_feature_df(
     promotion_indicator: int,
     week: int,
     sku_attrs: dict,
+    product_sku_code: int,
 ) -> pd.DataFrame:
     week_sin = math.sin(2 * math.pi * week / 52)
     week_cos = math.cos(2 * math.pi * week / 52)
@@ -18,6 +19,7 @@ def build_feature_df(
     rows = []
     for price in prices:
         rows.append({
+            "product_sku_code": product_sku_code,
             "customer": customer,
             "top_brand": sku_attrs["top_brand"],
             "flavor_internal": sku_attrs["flavor_internal"],

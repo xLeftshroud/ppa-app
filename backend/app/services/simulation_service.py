@@ -42,7 +42,8 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         # Predict volume at the overridden baseline price
         try:
             bl_df = build_feature_df([baseline_price], req.customer,
-                                     req.promotion_indicator, req.week, sku_attrs)
+                                     req.promotion_indicator, req.week, sku_attrs,
+                                     req.product_sku_code)
             baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
         except Exception as exc:
             raise InferenceError(f"Baseline volume prediction failed: {exc}")
@@ -66,7 +67,8 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     # Batch predict for curve
     try:
         curve_df = build_feature_df(unique_prices, req.customer,
-                                    req.promotion_indicator, req.week, sku_attrs)
+                                    req.promotion_indicator, req.week, sku_attrs,
+                                    req.product_sku_code)
         curve_volumes = pipeline.predict(curve_df)
     except Exception as exc:
         raise InferenceError(f"Curve prediction failed: {exc}")
@@ -96,7 +98,8 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     # Predict V0
     try:
         v0_df = build_feature_df([p0], req.customer,
-                                 req.promotion_indicator, req.week, sku_attrs)
+                                 req.promotion_indicator, req.week, sku_attrs,
+                                 req.product_sku_code)
         v0 = float(pipeline.predict(v0_df)[0])
     except Exception as exc:
         raise InferenceError(f"Selected-point prediction failed: {exc}")
@@ -108,7 +111,8 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     try:
         elast_prices = [p_minus, p_plus]
         elast_df = build_feature_df(elast_prices, req.customer,
-                                    req.promotion_indicator, req.week, sku_attrs)
+                                    req.promotion_indicator, req.week, sku_attrs,
+                                    req.product_sku_code)
         elast_vols = pipeline.predict(elast_df)
         v_minus = float(elast_vols[0])
         v_plus = float(elast_vols[1])
