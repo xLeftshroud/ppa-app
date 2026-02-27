@@ -129,6 +129,7 @@ export function DemandCurveChart({
       name: "Volume (units)",
       nameLocation: "middle" as const,
       nameGap: 55,
+      scale: true,
       axisLabel: { formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)) },
     },
     dataZoom: [
