@@ -38,16 +38,24 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev
 
 ## Replacing the DummyPipeline with a Real Model
 
-1. Train a scikit-learn Pipeline that accepts a DataFrame with these 10 feature columns (in order):
-   `customer, top_brand, flavor_internal, pack_type_internal, promotion_indicator, pack_size_internal, units_per_package_internal, price_per_litre, week_sin, week_cos`
-
-   Note: `product_sku_code` is NOT a model feature — it is a composite of brand/flavor/pack attributes.
+1. Train a scikit-learn Pipeline that accepts a DataFrame with these 11 feature columns (in order):
+   `product_sku_code, customer, top_brand, flavor_internal, pack_type_internal, promotion_indicator, pack_size_internal, units_per_package_internal, price_per_litre, week_sin, week_cos`
 
 2. Save it: `joblib.dump(pipeline, "backend/app/ml/pipeline.joblib")`
 
 3. Update `backend/app/ml/metadata.json` with the correct `model_version`, `features_version`, and `price_per_litre` distribution thresholds (p1/p99)
 
 4. Restart the backend — it will auto-detect and load the real pipeline
+
+## Training Data for Price Range Shading
+
+Place the same CSV used for model training in `backend/data/` (e.g. `backend/data/top10_skus_rows.csv`). On startup the backend reads the first `*.csv` it finds and pre-computes per-SKU price quantiles (p1, p5, p50, p95, p99). These drive the shaded confidence regions on the demand curve chart:
+
+- **Red zones** (< p1, > p99) — low confidence
+- **Orange zones** (p1–p5, p95–p99) — medium confidence
+- **White zone** (p5–p95) — high confidence
+
+If no CSV is present the chart renders without shading.
 
 ## CSV Format
 
@@ -78,3 +86,5 @@ Upload CSV files with these required columns (no missing values):
 | POST | `/v1/catalog/sku-lookup` | Reverse-lookup SKU by attributes |
 | GET | `/v1/baseline?dataset_id=&product_sku_code=&customer=` | Get baseline price/volume |
 | POST | `/v1/simulate` | Run simulation (curve + elasticity) |
+| GET | `/v1/skus` | List SKU codes from training data |
+| GET | `/v1/skus/{sku}/price-range` | Per-SKU price quantiles (p1/p5/p50/p95/p99) |
