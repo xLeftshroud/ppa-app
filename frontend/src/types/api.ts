@@ -80,3 +80,14 @@ export interface ApiErrorBody {
   details: unknown[];
   request_id: string;
 }
+
+export interface PriceRange {
+  sku: number;
+  metric: string;
+  n: number;
+  p1: number;
+  p5: number;
+  p50: number;
+  p95: number;
+  p99: number;
+}
