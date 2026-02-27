@@ -56,23 +56,36 @@ export function DemandCurveChart({
 
   const { curve, selected, baseline } = result;
 
-  // Build markLine + markArea on the main line series so they share the same axis mapping
-  const boundaryLines: object[] = [];
+  // Round to exactly 4dp to match curve data precision
+  const r4 = (v: number) => Math.round(v * 10000) / 10000;
+
+  // Build boundary line series (on hidden 2nd y-axis) + markArea
+  const boundaryLineSeries: object[] = [];
   const shadedAreas: object[][] = [];
   if (priceRange) {
     const prices = curve.map((p: CurvePoint) => p.price_per_litre);
     const minX = Math.min(...prices);
     const maxX = Math.max(...prices);
-    const { p1, p5, p95, p99 } = priceRange;
+    const p1 = r4(priceRange.p1);
+    const p5 = r4(priceRange.p5);
+    const p95 = r4(priceRange.p95);
+    const p99 = r4(priceRange.p99);
 
-    const dashed = { type: "dashed" as const, color: "#ea580c", width: 1.5 };
-    for (const [key, val] of [["P1", p1], ["P5", p5], ["P95", p95], ["P99", p99]] as const) {
-      boundaryLines.push({
-        xAxis: val,
-        lineStyle: dashed,
-        label: {
-          formatter: key,
-          position: "insideEndTop" as const,
+    // Boundary lines as line series on hidden yAxisIndex:1 (0-1 range = full chart height)
+    // This avoids markLine's axis-tick snapping and doesn't distort the main y-axis
+    for (const [key, val] of [["P1", p1], ["P5", p5], ["P95", p95], ["P99", p99]]) {
+      boundaryLineSeries.push({
+        type: "line" as const,
+        xAxisIndex: 0,
+        yAxisIndex: 1,
+        data: [[val, 0], [val, 1]],
+        lineStyle: { type: "dashed" as const, color: "#ea580c", width: 1.5 },
+        showSymbol: false,
+        silent: true,
+        tooltip: { show: false },
+        endLabel: {
+          show: true,
+          formatter: `${key}: ${(val as number).toFixed(4)}`,
           fontSize: 10,
           color: "#ea580c",
         },
@@ -80,12 +93,10 @@ export function DemandCurveChart({
     }
 
     const areaStyle = (c: string) => ({ color: c, borderColor: "transparent", borderWidth: 0, opacity: 1 });
-    // Red extreme zones: [min, p1] and [p99, max]
     shadedAreas.push(
       [{ xAxis: minX, itemStyle: areaStyle("rgba(239,68,68,0.15)") }, { xAxis: p1 }],
       [{ xAxis: p99, itemStyle: areaStyle("rgba(239,68,68,0.15)") }, { xAxis: maxX }],
     );
-    // Orange moderate zones: [p1, p5] and [p95, p99]
     shadedAreas.push(
       [{ xAxis: p1, itemStyle: areaStyle("rgba(249,115,22,0.15)") }, { xAxis: p5 }],
       [{ xAxis: p95, itemStyle: areaStyle("rgba(249,115,22,0.15)") }, { xAxis: p99 }],
@@ -106,7 +117,7 @@ export function DemandCurveChart({
         const lines = [
           `<strong>Price:</strong> ${price.toFixed(4)}`,
           `<strong>Volume:</strong> ${Math.round(volume).toLocaleString()}`,
-          `<strong>Change:</strong> ${pct > 0 ? "+" : ""}${pct}%`,
+          `<strong>Change:</strong> ${pct > 0 ? "+" : ""}${pct.toFixed(4)}%`,
           `<strong>Elasticity:</strong> ${selected.elasticity.toFixed(4)}`,
         ];
         if (confidence) {
@@ -124,22 +135,32 @@ export function DemandCurveChart({
       nameGap: 30,
       axisLabel: { formatter: (v: number) => v.toFixed(4) },
     },
-    yAxis: {
-      type: "value" as const,
-      name: "Volume (units)",
-      nameLocation: "middle" as const,
-      nameGap: 55,
-      scale: true,
-      axisLabel: { formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)) },
-    },
+    yAxis: [
+      {
+        type: "value" as const,
+        name: "Volume (units)",
+        nameLocation: "middle" as const,
+        nameGap: 55,
+        scale: true,
+        axisLabel: { formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)) },
+      },
+      // Hidden y-axis for boundary lines (fixed 0-1 range = full chart height)
+      {
+        type: "value" as const,
+        show: false,
+        min: 0,
+        max: 1,
+      },
+    ],
     dataZoom: [
-      { type: "inside" as const },
-      { type: "slider" as const, bottom: 10 },
+      { type: "inside" as const, filterMode: "none" as const, minValueSpan: 0.0005 },
+      { type: "slider" as const, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005 },
     ],
     series: [
       {
         type: "line" as const,
         smooth: false,
+        yAxisIndex: 0,
         data: curve.map((p: CurvePoint) => [p.price_per_litre, p.predicted_volume_units]),
         lineStyle: { width: 2, color: "#2563eb" },
         itemStyle: { color: "#2563eb" },
@@ -169,13 +190,11 @@ export function DemandCurveChart({
             },
           },
         },
-        markLine: boundaryLines.length > 0
-          ? { silent: true, symbol: "none", animation: false, data: boundaryLines }
-          : undefined,
         markArea: shadedAreas.length > 0
           ? { silent: true, animation: false, data: shadedAreas }
           : undefined,
       },
+      ...boundaryLineSeries,
     ],
   };
 
