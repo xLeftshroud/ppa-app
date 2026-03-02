@@ -22,10 +22,14 @@ export function useSimulate() {
   const [debouncedParams, setDebouncedParams] = useState<SimulateRequest | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const canSimulate = !!datasetId && selectedSku != null && !!selectedCustomer && !!baseline;
+  const hasBaseline = !!baseline || baselineOverride != null;
+  const canSimulate = !!datasetId && selectedSku != null && !!selectedCustomer;
+
+  // When no baseline and no override, we need a direct price (can't use percentage)
+  const needsDirectPrice = !hasBaseline && selectedNewPrice == null;
 
   useEffect(() => {
-    if (!canSimulate) {
+    if (!canSimulate || needsDirectPrice) {
       setDebouncedParams(null);
       return;
     }
@@ -45,7 +49,7 @@ export function useSimulate() {
     timerRef.current = setTimeout(() => setDebouncedParams(params), 300);
 
     return () => clearTimeout(timerRef.current);
-  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, baseline]);
+  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, baseline, needsDirectPrice]);
 
   const query = useQuery({
     queryKey: [

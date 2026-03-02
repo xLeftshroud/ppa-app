@@ -12,13 +12,14 @@ export function PriceSlider() {
   const setNewPrice = useAppStore((s) => s.setNewPrice);
 
   const basePrice = baselineOverride ?? baseline?.price_per_litre ?? 0;
-  const computedPrice = selectedNewPrice ?? (basePrice > 0 ? Math.max(0.01, basePrice * (1 + selectedPriceChangePct / 100)) : 0);
+  const hasBasePrice = basePrice > 0;
+  const computedPrice = selectedNewPrice ?? (hasBasePrice ? Math.max(0.01, basePrice * (1 + selectedPriceChangePct / 100)) : 0);
 
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label>Price Change (%)</Label>
+          <Label className={!hasBasePrice ? "text-muted-foreground" : ""}>Price Change (%)</Label>
           <span className="text-sm font-mono">
             {selectedPriceChangePct > 0 ? "+" : ""}
             {selectedPriceChangePct}%
@@ -30,16 +31,22 @@ export function PriceSlider() {
           step={1}
           value={[selectedPriceChangePct]}
           onValueChange={([val]) => setPriceChangePct(val)}
+          disabled={!hasBasePrice}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>-100%</span>
           <span>0%</span>
           <span>+100%</span>
         </div>
+        {!hasBasePrice && (
+          <p className="text-xs text-amber-600">
+            Set a baseline price or enter price directly below.
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">
-        <Label>Or enter price directly</Label>
+        <Label>{hasBasePrice ? "Or enter price directly" : "Enter price directly"}</Label>
         <Input
           type="number"
           step="0.01"

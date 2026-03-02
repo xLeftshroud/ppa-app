@@ -49,7 +49,7 @@ export interface ModelInfo {
 export interface SimulateResponse {
   model_info: ModelInfo;
   warnings: string[];
-  baseline: BaselineResponse;
+  baseline: BaselineResponse | null;
   selected: SelectedResult;
   curve: CurvePoint[];
 }
