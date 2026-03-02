@@ -201,14 +201,14 @@ export function DemandCurveChart({
               itemStyle: { color: "#ef4444", borderColor: "#fff", borderWidth: 2 },
               label: { show: false },
             },
-            {
+            ...(baseline ? [{
               coord: [baseline.price_per_litre, baseline.volume_units],
               name: "Baseline",
               symbol: "diamond",
               symbolSize: 12,
               itemStyle: { color: "#22c55e", borderColor: "#fff", borderWidth: 2 },
               label: { show: false },
-            },
+            }] : []),
           ],
           tooltip: {
             formatter: (params: { name: string; data: { coord: number[] } }) => {
@@ -234,10 +234,12 @@ export function DemandCurveChart({
               <div className="w-3 h-3 rounded-full bg-red-500" />
               <span>Selected</span>
             </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rotate-45 bg-green-500" />
-              <span>Baseline</span>
-            </div>
+            {baseline && (
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rotate-45 bg-green-500" />
+                <span>Baseline</span>
+              </div>
+            )}
             {priceRange && (
               <>
                 <div className="flex items-center gap-1">

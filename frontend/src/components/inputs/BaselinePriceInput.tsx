@@ -3,7 +3,7 @@ import { useBaseline } from "@/hooks/useBaseline";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function BaselinePriceInput() {
   const baseline = useAppStore((s) => s.baseline);
@@ -11,7 +11,14 @@ export function BaselinePriceInput() {
   const setBaselineOverride = useAppStore((s) => s.setBaselineOverride);
   const [overrideEnabled, setOverrideEnabled] = useState(false);
 
-  const { isLoading, error } = useBaseline();
+  const { isLoading, error, is404 } = useBaseline();
+
+  // Auto-enable override mode when baseline is not found
+  useEffect(() => {
+    if (is404) {
+      setOverrideEnabled(true);
+    }
+  }, [is404]);
 
   const displayPrice = baselineOverride ?? baseline?.price_per_litre ?? null;
 
@@ -29,6 +36,9 @@ export function BaselinePriceInput() {
     }
   };
 
+  // Non-404 errors are real errors
+  const hasRealError = error && !is404;
+
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -39,24 +49,32 @@ export function BaselinePriceInput() {
             checked={overrideEnabled}
             onCheckedChange={handleOverrideToggle}
             className="scale-75"
+            disabled={is404}
           />
         </div>
       </div>
 
       {isLoading ? (
         <div className="h-10 bg-muted animate-pulse rounded-md" />
-      ) : error ? (
+      ) : hasRealError ? (
         <p className="text-xs text-destructive">Baseline not available</p>
       ) : (
-        <Input
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={displayPrice ?? ""}
-          onChange={handlePriceChange}
-          disabled={!overrideEnabled}
-          placeholder={baseline ? String(baseline.price_per_litre) : "N/A"}
-        />
+        <>
+          {is404 && (
+            <p className="text-xs text-amber-600">
+              No baseline found for this SKU + customer. Enter a price manually.
+            </p>
+          )}
+          <Input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={displayPrice ?? ""}
+            onChange={handlePriceChange}
+            disabled={!overrideEnabled}
+            placeholder={baseline ? String(baseline.price_per_litre) : "Enter baseline price"}
+          />
+        </>
       )}
 
       {baseline && (

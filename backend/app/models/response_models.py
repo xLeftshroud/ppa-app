@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -56,6 +58,6 @@ class SimulateResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
     model_info: ModelInfo
     warnings: list[str]
-    baseline: BaselineResponse
+    baseline: Optional[BaselineResponse] = None
     selected: SelectedResult
     curve: list[CurvePoint]
