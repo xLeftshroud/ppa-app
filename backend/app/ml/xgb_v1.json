@@ -1,0 +1,23 @@
+{
+  "model_name": "XGBoost_OptunaTPE_MonotonePrice_dataset_v1",
+  "model_version": "XGBoost_OptunaTPE_MonotonePrice",
+  "features_version": "dataset_v2",
+  "sklearn_version": "1.8.0",
+  "numpy_version": "2.4.2",
+  "cat_columns": [
+    "customer",
+    "top_brand",
+    "flavor_internal",
+    "pack_type_internal"
+  ],
+  "num_columns": [
+    "promotion_indicator",
+    "pack_size_internal",
+    "units_per_package_internal",
+    "price_per_litre"
+  ],
+  "price_per_litre": {
+    "p1": 0.5863253333333333,
+    "p99": 6.5216
+  }
+}

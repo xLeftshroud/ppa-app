@@ -12,12 +12,13 @@ logger = logging.getLogger(__name__)
 
 # Pre-computed cache: sku_code -> quantile dict
 _cache: dict[int, dict] = {}
+_training_df: pd.DataFrame | None = None
 _loaded = False
 
 
 def load_training_csv() -> None:
     """Load the training CSV from backend/data/ and pre-compute per-SKU price quantiles."""
-    global _cache, _loaded
+    global _cache, _training_df, _loaded
 
     csv_path = Path(settings.training_data_path)
     if not csv_path.exists():
@@ -26,13 +27,16 @@ def load_training_csv() -> None:
         return
     logger.info("Loading training CSV for price ranges: %s", csv_path)
 
-    df = pd.read_csv(csv_path)
+    full_df = pd.read_csv(csv_path)
 
     for col in ("product_sku_code", "price_per_litre"):
-        if col not in df.columns:
+        if col not in full_df.columns:
             raise ValueError(f"Training CSV missing required column: {col}")
 
-    df = df[["product_sku_code", "price_per_litre"]].copy()
+    # Retain full DataFrame for scatter overlay queries
+    _training_df = full_df
+
+    df = full_df[["product_sku_code", "price_per_litre"]].copy()
     df = df.dropna(subset=["price_per_litre"])
     df = df[df["price_per_litre"] > 0]
 
@@ -51,6 +55,11 @@ def load_training_csv() -> None:
 
     logger.info("Pre-computed price ranges for %d SKUs", len(_cache))
     _loaded = True
+
+
+def get_training_df() -> pd.DataFrame | None:
+    """Return the full training CSV DataFrame (loaded at startup)."""
+    return _training_df
 
 
 def get_all_skus() -> list[int]:
