@@ -1,9 +1,16 @@
 import ReactECharts from "echarts-for-react";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo, useLayoutEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CurvePoint, PriceRange } from "@/types/api";
+import type { CurvePoint, PriceRange, ScatterPoint } from "@/types/api";
+
+export type ScatterOverlay = {
+  id: string;
+  title: string;
+  color: string;
+  points: ScatterPoint[];
+};
 
 function getConfidenceLabel(price: number, pr: PriceRange | null): string {
   if (!pr) return "";
@@ -21,12 +28,21 @@ function getConfidenceColor(label: string): string {
 export function DemandCurveChart({
   isLoading,
   priceRange,
+  scatterOverlays = [],
 }: {
   isLoading: boolean;
   priceRange: PriceRange | null;
+  scatterOverlays?: ScatterOverlay[];
 }) {
   const result = useAppStore((s) => s.simulateResult);
   const chartRef = useRef<ReactECharts>(null);
+
+  // Keep latest option in a ref so the clear+redraw effect always uses current data
+  const optionRef = useRef<Record<string, unknown> | null>(null);
+
+  // Use ref for scatterOverlays so onDataZoom doesn't need it as dependency
+  const scatterOverlaysRef = useRef(scatterOverlays);
+  scatterOverlaysRef.current = scatterOverlays;
 
   // Must be before early returns (Rules of Hooks)
   const onDataZoom = useCallback(() => {
@@ -42,11 +58,32 @@ export function DemandCurveChart({
     );
     if (visible.length === 0) return;
     const volumes = visible.map((p: CurvePoint) => p.predicted_volume_units);
+    // Include scatter overlay volumes in Y range (read from ref for latest value)
+    for (const overlay of scatterOverlaysRef.current) {
+      for (const pt of overlay.points) {
+        if (pt.price_per_litre >= xMin && pt.price_per_litre <= xMax) {
+          volumes.push(pt.nielsen_total_volume);
+        }
+      }
+    }
     const yMin = Math.min(...volumes);
     const yMax = Math.max(...volumes);
     const padding = (yMax - yMin) * 0.05 || 1;
     instance.setOption({ yAxis: [{ min: yMin - padding, max: yMax + padding }] }, false, true);
   }, [result]);
+
+  // Stable onEvents object — only recreated when the handler changes
+  const onEvents = useMemo(() => ({ dataZoom: onDataZoom }), [onDataZoom]);
+
+  // Clear and redraw the chart from scratch when data changes.
+  // Runs before paint (useLayoutEffect) so the user never sees stale/ghost series
+  // left over by echarts-for-react's merge-based setOption in componentDidUpdate.
+  useLayoutEffect(() => {
+    const instance = chartRef.current?.getEchartsInstance();
+    if (!instance || !optionRef.current) return;
+    instance.clear();
+    instance.setOption(optionRef.current);
+  }, [result, priceRange, scatterOverlays]);
 
   if (isLoading) {
     return (
@@ -127,7 +164,8 @@ export function DemandCurveChart({
 
   const curveData = curve.map((p: CurvePoint) => [p.price_per_litre, p.predicted_volume_units] as [number, number]);
 
-  const option = {
+  // Store option in ref for the clear+redraw effect
+  const option = optionRef.current = {
     animation: false,
     tooltip: {
       trigger: "axis" as const,
@@ -221,6 +259,20 @@ export function DemandCurveChart({
           : undefined,
       },
       ...boundaryLineSeries,
+      ...scatterOverlays.map((overlay) => ({
+        type: "scatter" as const,
+        name: overlay.title,
+        yAxisIndex: 0,
+        data: overlay.points.map((p) => [p.price_per_litre, p.nielsen_total_volume]),
+        itemStyle: { color: overlay.color, opacity: 0.6 },
+        symbolSize: 6,
+        tooltip: {
+          formatter: (params: { data: number[] }) => {
+            const [price, volume] = params.data;
+            return `<strong>${overlay.title}</strong><br/>Price: ${price.toFixed(4)}<br/>Volume: ${Math.round(volume).toLocaleString()}`;
+          },
+        },
+      })),
     ],
   };
 
@@ -252,11 +304,17 @@ export function DemandCurveChart({
                 </div>
               </>
             )}
+            {scatterOverlays.map((overlay) => (
+              <div key={overlay.id} className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ background: overlay.color, opacity: 0.6 }} />
+                <span>{overlay.title}</span>
+              </div>
+            ))}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <ReactECharts ref={chartRef} option={option} style={{ height: 350 }} onEvents={{ dataZoom: onDataZoom }} />
+        <ReactECharts ref={chartRef} option={option} style={{ height: 350 }} onEvents={onEvents} />
       </CardContent>
     </Card>
   );

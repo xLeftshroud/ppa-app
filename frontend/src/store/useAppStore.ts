@@ -1,6 +1,14 @@
 import { create } from "zustand";
 import type { SkuItem, SimulateResponse, BaselineResponse } from "@/types/api";
 
+export type CustomPlot = {
+  id: string;
+  title: string;
+  color: string;
+  isVisible: boolean;
+  columns: string[];
+};
+
 interface AppState {
   // Dataset
   datasetId: string | null;
@@ -27,6 +35,9 @@ interface AppState {
   // Results
   simulateResult: SimulateResponse | null;
 
+  // Custom Plots
+  customPlots: CustomPlot[];
+
   // Actions
   setDataset: (id: string, rows: number, skus: number) => void;
   setSelectedSku: (sku: number | null, attrs: SkuItem | null) => void;
@@ -38,6 +49,9 @@ interface AppState {
   setPriceChangePct: (pct: number) => void;
   setNewPrice: (price: number | null) => void;
   setSimulateResult: (result: SimulateResponse | null) => void;
+  addCustomPlot: (plot: CustomPlot) => void;
+  updateCustomPlot: (id: string, patch: Partial<CustomPlot>) => void;
+  removeCustomPlot: (id: string) => void;
   reset: () => void;
 }
 
@@ -55,6 +69,7 @@ const initialState = {
   selectedPriceChangePct: 0,
   selectedNewPrice: null,
   simulateResult: null,
+  customPlots: [],
 };
 
 export const useAppStore = create<AppState>()((set) => ({
@@ -79,5 +94,14 @@ export const useAppStore = create<AppState>()((set) => ({
   setNewPrice: (price) => set({ selectedNewPrice: price }),
 
   setSimulateResult: (result) => set({ simulateResult: result }),
+
+  addCustomPlot: (plot) => set((s) => ({ customPlots: [...s.customPlots, plot] })),
+  updateCustomPlot: (id, patch) => set((s) => ({
+    customPlots: s.customPlots.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+  })),
+  removeCustomPlot: (id) => set((s) => ({
+    customPlots: s.customPlots.filter((p) => p.id !== id),
+  })),
+
   reset: () => set(initialState),
 }));
