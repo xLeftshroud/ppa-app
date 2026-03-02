@@ -24,7 +24,7 @@ export function SkuSelector() {
       <div className="space-y-1.5">
         <Label>Product SKU</Label>
         <Select
-          value={selectedSku != null ? String(selectedSku) : undefined}
+          value={selectedSku != null ? String(selectedSku) : ""}
           onValueChange={handleSelect}
           disabled={!datasetId || isLoading}
         >

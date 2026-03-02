@@ -1,11 +1,10 @@
 {
-  "model_name": "PPA_PIPELINE",
+  "model_name": "Model_2026.03.02",
   "model_version": "XGBoost_OptunaTPE_MonotonePrice",
   "features_version": "v1",
   "sklearn_version": "1.8.0",
   "numpy_version": "2.4.2",
   "cat_columns": [
-    "product_sku_code",
     "customer",
     "top_brand",
     "flavor_internal",
@@ -18,7 +17,7 @@
     "price_per_litre"
   ],
   "price_per_litre": {
-    "p1": 0.61245,
-    "p99": 3.90167333317
+    "p1": 0.5863253333333333,
+    "p99": 6.5216
   }
 }

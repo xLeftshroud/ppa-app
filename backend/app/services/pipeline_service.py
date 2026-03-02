@@ -8,6 +8,7 @@ from typing import Any
 import joblib
 from sklearn.pipeline import Pipeline
 
+from app.config import settings
 from app.ml.dummy_pipeline import DummyDemandModel
 
 logger = logging.getLogger(__name__)
@@ -15,9 +16,8 @@ logger = logging.getLogger(__name__)
 _pipeline: Pipeline | None = None
 _metadata: dict[str, Any] = {}
 
-_BASE_DIR = Path(__file__).resolve().parent.parent / "ml"
-_MODEL_PATH = _BASE_DIR / "pipeline.joblib"
-_METADATA_PATH = _BASE_DIR / "metadata.json"
+_MODEL_PATH = Path(settings.model_path)
+_METADATA_PATH = Path(settings.metadata_path)
 
 
 def _build_dummy_pipeline() -> Pipeline:

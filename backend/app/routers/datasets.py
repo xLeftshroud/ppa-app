@@ -7,13 +7,14 @@ from fastapi import APIRouter, UploadFile, File
 from app.models.response_models import UploadResponse
 from app.services.dataset_service import store_dataset
 from app.utils.csv_validator import validate_csv
+from app.config import settings
 from app.utils.error_handler import CsvParseError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["datasets"])
 
-MAX_SIZE = 50 * 1024 * 1024  # 50 MB
+MAX_SIZE = settings.max_upload_size_mb * 1024 * 1024
 
 
 @router.post("/datasets/upload", response_model=UploadResponse)

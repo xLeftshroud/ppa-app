@@ -1,4 +1,5 @@
 import ReactECharts from "echarts-for-react";
+import { useRef, useCallback } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +26,27 @@ export function DemandCurveChart({
   priceRange: PriceRange | null;
 }) {
   const result = useAppStore((s) => s.simulateResult);
+  const chartRef = useRef<ReactECharts>(null);
+
+  // Must be before early returns (Rules of Hooks)
+  const onDataZoom = useCallback(() => {
+    const instance = chartRef.current?.getEchartsInstance();
+    if (!instance || !result) return;
+    const opt = instance.getOption() as { dataZoom?: { startValue?: number; endValue?: number }[] };
+    const dz = opt.dataZoom?.[0];
+    if (!dz || dz.startValue == null || dz.endValue == null) return;
+    const xMin = dz.startValue;
+    const xMax = dz.endValue;
+    const visible = result.curve.filter(
+      (p: CurvePoint) => p.price_per_litre >= xMin && p.price_per_litre <= xMax
+    );
+    if (visible.length === 0) return;
+    const volumes = visible.map((p: CurvePoint) => p.predicted_volume_units);
+    const yMin = Math.min(...volumes);
+    const yMax = Math.max(...volumes);
+    const padding = (yMax - yMin) * 0.05 || 1;
+    instance.setOption({ yAxis: [{ min: yMin - padding, max: yMax + padding }] }, false, true);
+  }, [result]);
 
   if (isLoading) {
     return (
@@ -103,7 +125,10 @@ export function DemandCurveChart({
     );
   }
 
+  const curveData = curve.map((p: CurvePoint) => [p.price_per_litre, p.predicted_volume_units] as [number, number]);
+
   const option = {
+    animation: false,
     tooltip: {
       trigger: "axis" as const,
       formatter: (params: { data: number[] }[]) => {
@@ -153,19 +178,20 @@ export function DemandCurveChart({
       },
     ],
     dataZoom: [
-      { type: "inside" as const, filterMode: "none" as const, minValueSpan: 0.0005 },
-      { type: "slider" as const, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005 },
+      { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005 },
+      { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005 },
     ],
     series: [
       {
         type: "line" as const,
         smooth: false,
         yAxisIndex: 0,
-        data: curve.map((p: CurvePoint) => [p.price_per_litre, p.predicted_volume_units]),
+        data: curveData,
         lineStyle: { width: 2, color: "#2563eb" },
         itemStyle: { color: "#2563eb" },
         showSymbol: false,
         markPoint: {
+          animation: false,
           data: [
             {
               coord: [selected.new_price_per_litre, selected.predicted_volume_units],
@@ -228,7 +254,7 @@ export function DemandCurveChart({
         </div>
       </CardHeader>
       <CardContent>
-        <ReactECharts option={option} style={{ height: 350 }} />
+        <ReactECharts ref={chartRef} option={option} style={{ height: 350 }} onEvents={{ dataZoom: onDataZoom }} />
       </CardContent>
     </Card>
   );
