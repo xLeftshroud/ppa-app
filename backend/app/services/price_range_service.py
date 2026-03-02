@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from app.config import settings
+
 logger = logging.getLogger(__name__)
 
 # Pre-computed cache: sku_code -> quantile dict
@@ -17,14 +19,11 @@ def load_training_csv() -> None:
     """Load the training CSV from backend/data/ and pre-compute per-SKU price quantiles."""
     global _cache, _loaded
 
-    data_dir = Path(__file__).resolve().parent.parent.parent / "data"
-    csv_files = sorted(data_dir.glob("*.csv"))
-    if not csv_files:
-        logger.warning("No CSV files found in %s — price range endpoint will return 404 for all SKUs", data_dir)
+    csv_path = Path(settings.training_data_path)
+    if not csv_path.exists():
+        logger.warning("Training CSV not found at %s — price range endpoint will return 404 for all SKUs", csv_path)
         _loaded = True
         return
-
-    csv_path = csv_files[0]
     logger.info("Loading training CSV for price ranges: %s", csv_path)
 
     df = pd.read_csv(csv_path)

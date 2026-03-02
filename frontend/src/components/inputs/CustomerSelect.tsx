@@ -11,7 +11,7 @@ export function CustomerSelect() {
   return (
     <div className="space-y-1.5">
       <Label>Customer</Label>
-      <Select value={selectedCustomer ?? undefined} onValueChange={setCustomer}>
+      <Select value={selectedCustomer ?? ""} onValueChange={setCustomer}>
         <SelectTrigger>
           <SelectValue placeholder="Select customer" />
         </SelectTrigger>
