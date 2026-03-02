@@ -64,8 +64,8 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
         <CardTitle className="text-lg">Results</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Metric label="Baseline Price" value={`${baseline.price_per_litre.toFixed(4)}`} sub={`Week ${baseline.yearweek}`} />
-        <Metric label="Baseline Volume" value={baseline.volume_units.toLocaleString()} sub="units" />
+        <Metric label="Baseline Price" value={baseline ? baseline.price_per_litre.toFixed(4) : "N/A"} sub={baseline ? `Week ${baseline.yearweek}` : "No baseline"} />
+        <Metric label="Baseline Volume" value={baseline ? baseline.volume_units.toLocaleString() : "N/A"} sub={baseline ? "units" : "No baseline"} />
         <Metric label="New Price" value={`${selected.new_price_per_litre.toFixed(4)}`} sub={`${selected.price_change_pct > 0 ? "+" : ""}${selected.price_change_pct.toFixed(1)}%`} highlight />
         <Metric label="Predicted Volume" value={Math.round(selected.predicted_volume_units).toLocaleString()} sub="units" />
         <div className="space-y-0.5">

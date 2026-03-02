@@ -36,6 +36,27 @@ The frontend defaults to `http://localhost:8000` as the API base. Override with:
 VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
+## Environment Configuration
+
+The backend reads settings from `backend/.env` (see `backend/.env.example` for all options):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MODEL_PATH` | `app/ml/pipeline.joblib` | Path to trained ML pipeline (relative to `backend/`) |
+| `METADATA_PATH` | `app/ml/metadata.json` | Path to model metadata JSON |
+| `TRAINING_DATA_PATH` | `data/top10_skus_rows.csv` | Path to training CSV for price quantiles |
+| `CORS_ORIGINS` | `http://localhost:5173,...` | Comma-separated allowed CORS origins |
+| `MAX_UPLOAD_SIZE_MB` | `50` | Maximum CSV upload size in MB |
+| `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+
+Copy `.env.example` to `.env` and customize:
+
+```bash
+cd backend
+cp .env.example .env
+# Edit .env as needed
+```
+
 ## Replacing the DummyPipeline with a Real Model
 
 1. Train a scikit-learn Pipeline that accepts a DataFrame with these 11 feature columns (in order):
@@ -49,7 +70,7 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev
 
 ## Training Data for Price Range Shading
 
-Place the same CSV used for model training in `backend/data/` (e.g. `backend/data/top10_skus_rows.csv`). On startup the backend reads the first `*.csv` it finds and pre-computes per-SKU price quantiles (p1, p5, p50, p95, p99). These drive the shaded confidence regions on the demand curve chart:
+Place the training CSV in `backend/data/` and set `TRAINING_DATA_PATH` in `.env` (default: `data/top10_skus_rows.csv`). On startup the backend loads this file and pre-computes per-SKU price quantiles (p1, p5, p50, p95, p99). These drive the shaded confidence regions on the demand curve chart:
 
 - **Red zones** (< p1, > p99) — low confidence
 - **Orange zones** (p1–p5, p95–p99) — medium confidence
