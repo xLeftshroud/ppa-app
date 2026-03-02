@@ -8,20 +8,35 @@ import { PriceSlider } from "@/components/inputs/PriceSlider";
 import { ResultsCard } from "@/components/results/ResultsCard";
 import { PriceRangeCard } from "@/components/results/PriceRangeCard";
 import { DemandCurveChart } from "@/components/results/DemandCurveChart";
+import { CustomPlotsSidebar } from "@/components/results/CustomPlotsSidebar";
 import { WarningsBanner } from "@/components/results/WarningsBanner";
 import { useSimulate } from "@/hooks/useSimulate";
 import { usePriceRange } from "@/hooks/usePriceRange";
+import { useAllCustomPlotData } from "@/hooks/useAllCustomPlotData";
 import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/api/client";
 import { toast } from "@/hooks/useToast";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 export function HomePage() {
   const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
   const { isLoading, isFetching, error, canSimulate } = useSimulate();
   const { data: priceRange } = usePriceRange(selectedSku);
+  const customPlotData = useAllCustomPlotData();
+  const scatterOverlays = useMemo(
+    () =>
+      customPlotData
+        .filter((d) => d.data)
+        .map((d) => ({
+          id: d.plot.id,
+          title: d.plot.title,
+          color: d.plot.color,
+          points: d.data!.points,
+        })),
+    [customPlotData],
+  );
 
   useEffect(() => {
     if (error) {
@@ -36,7 +51,7 @@ export function HomePage() {
   }, [error]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 p-6 max-w-[1400px] mx-auto">
+    <div className="flex flex-col lg:flex-row gap-6 p-6 max-w-[1600px] mx-auto">
       {/* Left Panel — Inputs */}
       <div className="w-full lg:w-[380px] shrink-0 space-y-5">
         <div>
@@ -78,7 +93,14 @@ export function HomePage() {
         <WarningsBanner />
         <ResultsCard isLoading={isLoading || isFetching} />
         <PriceRangeCard priceRange={priceRange ?? null} />
-        <DemandCurveChart isLoading={isLoading || isFetching} priceRange={priceRange ?? null} />
+        <div className="flex gap-4">
+          <div className="flex-1 min-w-0">
+            <DemandCurveChart isLoading={isLoading || isFetching} priceRange={priceRange ?? null} scatterOverlays={scatterOverlays} />
+          </div>
+          <div className="w-[240px] shrink-0">
+            <CustomPlotsSidebar />
+          </div>
+        </div>
       </div>
     </div>
   );

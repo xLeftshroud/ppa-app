@@ -91,3 +91,22 @@ export interface PriceRange {
   p95: number;
   p99: number;
 }
+
+export interface ScatterFilter {
+  column: string;
+  value: string;
+}
+
+export interface ScatterRequest {
+  filters: ScatterFilter[];
+}
+
+export interface ScatterPoint {
+  price_per_litre: number;
+  nielsen_total_volume: number;
+}
+
+export interface ScatterResponse {
+  points: ScatterPoint[];
+  count: number;
+}
