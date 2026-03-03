@@ -8,6 +8,7 @@ export interface UploadResponse {
 
 export interface SkuItem {
   product_sku_code: number;
+  material_medium_description: string;
   top_brand: string;
   flavor_internal: string;
   pack_type_internal: string;

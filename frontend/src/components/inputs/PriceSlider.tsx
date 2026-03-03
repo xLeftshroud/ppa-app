@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,28 @@ export function PriceSlider() {
   const basePrice = baselineOverride ?? baseline?.price_per_litre ?? 0;
   const hasBasePrice = basePrice > 0;
   const computedPrice = selectedNewPrice ?? (hasBasePrice ? Math.max(0.01, basePrice * (1 + selectedPriceChangePct / 100)) : 0);
+
+  // Local draft for the direct price input
+  const [priceDraft, setPriceDraft] = useState(selectedNewPrice != null ? String(selectedNewPrice) : "");
+
+  // Sync draft when store value changes externally (e.g. slider moved)
+  useEffect(() => {
+    setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
+  }, [selectedNewPrice]);
+
+  const commitPrice = () => {
+    if (priceDraft === "") {
+      setNewPrice(null);
+    } else {
+      const num = parseFloat(priceDraft);
+      if (!isNaN(num) && num >= 0.01) {
+        setNewPrice(num);
+      } else {
+        // Revert to current store value
+        setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
+      }
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -52,17 +75,11 @@ export function PriceSlider() {
           step="0.01"
           min="0.01"
           placeholder="Price per litre"
-          value={selectedNewPrice ?? ""}
-          onChange={(e) => {
-            const val = e.target.value;
-            if (val === "") {
-              setNewPrice(null);
-            } else {
-              const num = parseFloat(val);
-              if (!isNaN(num) && num >= 0.01) {
-                setNewPrice(num);
-              }
-            }
+          value={priceDraft}
+          onChange={(e) => setPriceDraft(e.target.value)}
+          onBlur={commitPrice}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitPrice();
           }}
         />
       </div>
