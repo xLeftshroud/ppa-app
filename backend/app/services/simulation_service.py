@@ -29,6 +29,12 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     pipeline = get_pipeline()
     metadata = get_metadata()
 
+    # Derive continuous_week: max from dataset + 1 (next unseen week)
+    if "continuous_week" in df.columns:
+        continuous_week = int(df["continuous_week"].max()) + 1
+    else:
+        continuous_week = 0
+
     # --- SKU attributes ---
     sku_attrs = get_sku_attributes(df, req.product_sku_code)
     if sku_attrs is None:
@@ -53,7 +59,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         try:
             bl_df = build_feature_df([baseline_price], req.customer,
                                      req.promotion_indicator, req.week, sku_attrs,
-                                     req.product_sku_code)
+                                     req.product_sku_code, continuous_week)
             baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
         except Exception as exc:
             raise InferenceError(f"Baseline volume prediction failed: {exc}")
@@ -106,7 +112,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     try:
         curve_df = build_feature_df(all_prices_sorted, req.customer,
                                     req.promotion_indicator, req.week, sku_attrs,
-                                    req.product_sku_code)
+                                    req.product_sku_code, continuous_week)
         curve_volumes = pipeline.predict(curve_df)
     except Exception as exc:
         raise InferenceError(f"Curve prediction failed: {exc}")
@@ -148,7 +154,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     try:
         v0_df = build_feature_df([p0], req.customer,
                                  req.promotion_indicator, req.week, sku_attrs,
-                                 req.product_sku_code)
+                                 req.product_sku_code, continuous_week)
         v0 = float(pipeline.predict(v0_df)[0])
     except Exception as exc:
         raise InferenceError(f"Selected-point prediction failed: {exc}")
@@ -161,7 +167,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         elast_prices = [p_minus, p_plus]
         elast_df = build_feature_df(elast_prices, req.customer,
                                     req.promotion_indicator, req.week, sku_attrs,
-                                    req.product_sku_code)
+                                    req.product_sku_code, continuous_week)
         elast_vols = pipeline.predict(elast_df)
         v_minus = float(elast_vols[0])
         v_plus = float(elast_vols[1])

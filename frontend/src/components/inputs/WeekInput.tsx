@@ -17,7 +17,7 @@ export function WeekInput() {
   const commit = () => {
     const val = parseInt(draft, 10);
     if (!isNaN(val) && val >= 1 && val <= 52) {
-      setWeek(val);
+      if (val !== week) setWeek(val);
     } else {
       // Revert to current store value
       setDraft(String(week));
