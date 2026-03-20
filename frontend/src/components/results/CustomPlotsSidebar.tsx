@@ -23,7 +23,7 @@ export function CustomPlotsSidebar() {
       title: `Plot ${customPlots.length + 1}`,
       color: PALETTE[customPlots.length % PALETTE.length],
       isVisible: true,
-      columns: ["flavor_internal"],
+      columns: ["product_sku_code"],
     };
     addCustomPlot(newPlot);
     setEditingPlot(newPlot);

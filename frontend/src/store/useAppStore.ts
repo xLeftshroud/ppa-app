@@ -90,8 +90,8 @@ export const useAppStore = create<AppState>()((set) => ({
   setBaseline: (bl) => set({ baseline: bl }),
   setBaselineOverride: (price) => set({ baselineOverride: price, simulateResult: null }),
 
-  setPriceChangePct: (pct) => set({ selectedPriceChangePct: pct, selectedNewPrice: null }),
-  setNewPrice: (price) => set({ selectedNewPrice: price }),
+  setPriceChangePct: (pct) => set({ selectedPriceChangePct: pct, selectedNewPrice: null, simulateResult: null }),
+  setNewPrice: (price) => set({ selectedNewPrice: price, simulateResult: null }),
 
   setSimulateResult: (result) => set({ simulateResult: result }),
 

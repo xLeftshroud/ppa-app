@@ -171,9 +171,11 @@ export function DemandCurveChart({
     animation: false,
     tooltip: {
       trigger: "axis" as const,
-      formatter: (params: { data: number[] }[]) => {
-        if (!params[0]) return "";
-        const [price, volume] = params[0].data;
+      axisPointer: { type: "cross" as const },
+      formatter: (params: { data: number[]; seriesIndex: number }[]) => {
+        const curveParam = params.find((p) => p.seriesIndex === 0);
+        if (!curveParam) return "";
+        const [price, volume] = curveParam.data;
         const curvePoint = curve.find(
           (p: CurvePoint) => Math.abs(p.price_per_litre - price) < 0.0001
         );
@@ -269,12 +271,7 @@ export function DemandCurveChart({
         data: overlay.points.map((p) => [p.price_per_litre, p.nielsen_total_volume]),
         itemStyle: { color: overlay.color, opacity: 0.6 },
         symbolSize: 6,
-        tooltip: {
-          formatter: (params: { data: number[] }) => {
-            const [price, volume] = params.data;
-            return `<strong>${overlay.title}</strong><br/>Price: ${price.toFixed(4)}<br/>Volume: ${Math.round(volume).toLocaleString()}`;
-          },
-        },
+        tooltip: { show: false },
       })),
     ],
   };

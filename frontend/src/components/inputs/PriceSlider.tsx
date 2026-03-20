@@ -16,21 +16,39 @@ export function PriceSlider() {
   const hasBasePrice = basePrice > 0;
   const computedPrice = selectedNewPrice ?? (hasBasePrice ? Math.max(0.01, basePrice * (1 + selectedPriceChangePct / 100)) : 0);
 
+  // Local draft for the percentage input
+  const [pctDraft, setPctDraft] = useState(String(selectedPriceChangePct));
+
+  // Sync draft when store value changes externally (e.g. slider moved)
+  useEffect(() => {
+    setPctDraft(String(selectedPriceChangePct));
+  }, [selectedPriceChangePct]);
+
+  const commitPct = () => {
+    const num = parseFloat(pctDraft);
+    if (!isNaN(num) && num >= -100 && num <= 100) {
+      if (num !== selectedPriceChangePct) setPriceChangePct(num);
+    } else {
+      // Revert to current store value
+      setPctDraft(String(selectedPriceChangePct));
+    }
+  };
+
   // Local draft for the direct price input
   const [priceDraft, setPriceDraft] = useState(selectedNewPrice != null ? String(selectedNewPrice) : "");
 
-  // Sync draft when store value changes externally (e.g. slider moved)
+  // Sync draft when store value changes externally
   useEffect(() => {
     setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
   }, [selectedNewPrice]);
 
   const commitPrice = () => {
     if (priceDraft === "") {
-      setNewPrice(null);
+      if (selectedNewPrice !== null) setNewPrice(null);
     } else {
       const num = parseFloat(priceDraft);
       if (!isNaN(num) && num >= 0.01) {
-        setNewPrice(num);
+        if (num !== selectedNewPrice) setNewPrice(num);
       } else {
         // Revert to current store value
         setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
@@ -43,10 +61,20 @@ export function PriceSlider() {
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
           <Label className={!hasBasePrice ? "text-muted-foreground" : ""}>Price Change (%)</Label>
-          <span className="text-sm font-mono">
-            {selectedPriceChangePct > 0 ? "+" : ""}
-            {selectedPriceChangePct}%
-          </span>
+          <Input
+            type="number"
+            step="0.1"
+            min="-100"
+            max="100"
+            className="w-24 h-7 text-sm font-mono text-right"
+            value={pctDraft}
+            onChange={(e) => setPctDraft(e.target.value)}
+            onBlur={commitPct}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitPct();
+            }}
+            disabled={!hasBasePrice}
+          />
         </div>
         <Slider
           min={-100}
