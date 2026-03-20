@@ -22,7 +22,7 @@ import { useEffect, useMemo } from "react";
 export function HomePage() {
   const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
-  const { isLoading, isFetching, error, canSimulate } = useSimulate();
+  const { isLoading, isFetching, error, canSimulate, runNow } = useSimulate();
   const { data: priceRange } = usePriceRange(selectedSku);
   const customPlotData = useAllCustomPlotData();
   const scatterOverlays = useMemo(
@@ -81,7 +81,7 @@ export function HomePage() {
               </div>
             </div>
 
-            <Button className="w-full" disabled={!canSimulate || isFetching}>
+            <Button className="w-full" disabled={!canSimulate || isFetching} onClick={runNow}>
               {isFetching ? "Simulating..." : "Run Simulation"}
             </Button>
           </>

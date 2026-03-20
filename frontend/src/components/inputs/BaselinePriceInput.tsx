@@ -40,7 +40,7 @@ export function BaselinePriceInput() {
   const commitPrice = () => {
     const val = parseFloat(draft);
     if (!isNaN(val) && val >= 0.01) {
-      setBaselineOverride(val);
+      if (val !== baselineOverride) setBaselineOverride(val);
     } else {
       // Revert to current display value
       setDraft(displayPrice != null ? String(displayPrice) : "");
