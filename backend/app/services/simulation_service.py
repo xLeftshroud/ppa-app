@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
-
-import numpy as np
+from typing import Optional
 
 from app.models.request_models import SimulateRequest
 from app.models.response_models import (
@@ -17,7 +15,6 @@ from app.services.baseline_service import get_baseline
 from app.services.catalog_service import get_sku_attributes
 from app.services.dataset_service import get_dataset
 from app.services.pipeline_service import get_metadata, get_pipeline
-from app.services.price_range_service import get_price_range
 from app.utils.error_handler import BaselineNotFound, InferenceError, ValidationError
 from app.utils.feature_builder import build_feature_df
 
@@ -76,37 +73,23 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             volume_units=baseline_volume,
         )
 
-    # --- Curve: fine 0.01-step within [p1, p99] + coarse grid if baseline exists ---
-    all_prices_set: dict[float, None] = {}
+    # --- Curve: −100% to +100% of baseline, step 0.001 ---
+    all_prices: list[float] = []
 
-    # Coarse 41-point grid centered on baseline (only if baseline_price exists)
     if baseline_price is not None:
-        pct_grid = list(range(-100, 105, 5))
-        coarse_prices = [max(0.01, baseline_price * (1 + pct / 100)) for pct in pct_grid]
-        for p in coarse_prices:
-            all_prices_set[round(p, 4)] = None
-
-    # Fine-grained points within SKU-specific [p1, p99]
-    sku_range = get_price_range(req.product_sku_code)
-    if sku_range:
-        p1_val = sku_range["p1"]
-        p99_val = sku_range["p99"]
-        p = round(p1_val, 2)
-        while p <= p99_val:
-            all_prices_set[round(p, 4)] = None
-            p = round(p + 0.01, 4)
-
-    # If no baseline and no sku_range, use global p1-p99 from metadata
-    if not all_prices_set:
+        p_start = 0.001  # −100% clamps to 0; minimum valid price at 3dp
+        p_end = round(baseline_price * 2.0, 3)
+    else:
         price_meta = metadata.get("price_per_litre", {})
-        g_p1 = price_meta.get("p1", 0.5)
-        g_p99 = price_meta.get("p99", 7.0)
-        p = round(g_p1, 2)
-        while p <= g_p99:
-            all_prices_set[round(p, 4)] = None
-            p = round(p + 0.01, 4)
+        p_start = round(price_meta.get("p1", 0.5), 3)
+        p_end = round(price_meta.get("p99", 7.0), 3)
 
-    all_prices_sorted = sorted(all_prices_set.keys())
+    p = p_start
+    while p <= p_end:
+        all_prices.append(p)
+        p = round(p + 0.001, 3)
+
+    all_prices_sorted = all_prices
 
     # Batch predict for entire curve
     try:
