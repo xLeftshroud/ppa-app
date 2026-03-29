@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npx vite build)",
       "Bash(python:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(cat /c/Users/Samuel/Desktop/PPA/backend/data/*)",
+      "Bash(grep -r settings. /c/Users/Samuel/Desktop/PPA/backend/app --include=*.py)"
     ]
   }
 }
