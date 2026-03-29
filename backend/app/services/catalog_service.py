@@ -4,6 +4,7 @@ import pandas as pd
 
 SKU_ATTR_COLS = [
     "product_sku_code",
+    "material_medium_description",
     "top_brand",
     "flavor_internal",
     "pack_type_internal",

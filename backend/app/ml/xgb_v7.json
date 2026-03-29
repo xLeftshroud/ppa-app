@@ -1,11 +1,10 @@
 {
-  "model_name": "PPA_PIPELINE",
-  "model_version": "XGBoost_OptunaTPE_MonotonePrice",
-  "features_version": "v1",
+  "model_name": "XGBoost_OptunaTPE_MonotonePrice_TimeCV",
+  "model_version": "XGBoost_OptunaTPE_MonotonePrice_TimeCV",
+  "features_version": "dataset_v3",
   "sklearn_version": "1.8.0",
   "numpy_version": "2.4.2",
   "cat_columns": [
-    "product_sku_code",
     "customer",
     "top_brand",
     "flavor_internal",
@@ -15,10 +14,13 @@
     "promotion_indicator",
     "pack_size_internal",
     "units_per_package_internal",
-    "price_per_litre"
+    "price_per_litre",
+    "week_sin",
+    "week_cos",
+    "continuous_week"
   ],
   "price_per_litre": {
-    "p1": 0.61245,
-    "p99": 3.90167333317
+    "p1": 0.6186838383838384,
+    "p99": 6.4832
   }
 }

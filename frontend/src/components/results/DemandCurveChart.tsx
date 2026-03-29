@@ -1,9 +1,19 @@
 import ReactECharts from "echarts-for-react";
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useMemo, useEffect } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { CurvePoint, PriceRange } from "@/types/api";
+import type { CurvePoint, PriceRange, ScatterPoint } from "@/types/api";
+
+// Module-level zoom state — survives key-driven remounts
+let savedZoom: { startValue: number; endValue: number } | null = null;
+
+export type ScatterOverlay = {
+  id: string;
+  title: string;
+  color: string;
+  points: ScatterPoint[];
+};
 
 function getConfidenceLabel(price: number, pr: PriceRange | null): string {
   if (!pr) return "";
@@ -21,32 +31,66 @@ function getConfidenceColor(label: string): string {
 export function DemandCurveChart({
   isLoading,
   priceRange,
+  scatterOverlays = [],
 }: {
   isLoading: boolean;
   priceRange: PriceRange | null;
+  scatterOverlays?: ScatterOverlay[];
 }) {
   const result = useAppStore((s) => s.simulateResult);
   const chartRef = useRef<ReactECharts>(null);
 
-  // Must be before early returns (Rules of Hooks)
+  // Use refs so onDataZoom always reads latest values without needing them as deps
+  const scatterOverlaysRef = useRef(scatterOverlays);
+  scatterOverlaysRef.current = scatterOverlays;
+  const resultRef = useRef(result);
+  resultRef.current = result;
+
   const onDataZoom = useCallback(() => {
     const instance = chartRef.current?.getEchartsInstance();
-    if (!instance || !result) return;
+    const curResult = resultRef.current;
+    if (!instance || !curResult) return;
     const opt = instance.getOption() as { dataZoom?: { startValue?: number; endValue?: number }[] };
     const dz = opt.dataZoom?.[0];
     if (!dz || dz.startValue == null || dz.endValue == null) return;
     const xMin = dz.startValue;
     const xMax = dz.endValue;
-    const visible = result.curve.filter(
+    savedZoom = { startValue: xMin, endValue: xMax };
+    const visible = curResult.curve.filter(
       (p: CurvePoint) => p.price_per_litre >= xMin && p.price_per_litre <= xMax
     );
     if (visible.length === 0) return;
     const volumes = visible.map((p: CurvePoint) => p.predicted_volume_units);
+    for (const overlay of scatterOverlaysRef.current) {
+      for (const pt of overlay.points) {
+        if (pt.price_per_litre >= xMin && pt.price_per_litre <= xMax) {
+          volumes.push(pt.nielsen_total_volume);
+        }
+      }
+    }
     const yMin = Math.min(...volumes);
     const yMax = Math.max(...volumes);
     const padding = (yMax - yMin) * 0.05 || 1;
     instance.setOption({ yAxis: [{ min: yMin - padding, max: yMax + padding }] }, false, true);
-  }, [result]);
+  }, []);
+
+  const onEvents = useMemo(() => ({ dataZoom: onDataZoom }), [onDataZoom]);
+
+  // KEY FIX: When the set of visible overlays changes (add/remove/toggle),
+  // the key changes, forcing React to unmount the old ECharts instance and
+  // mount a fresh one. This guarantees zero ghost series.
+  const chartKey = useMemo(
+    () => scatterOverlays.map((o) => o.id).sort().join(","),
+    [scatterOverlays],
+  );
+
+  // After remount with saved zoom, trigger Y-axis adjustment
+  useEffect(() => {
+    if (savedZoom) {
+      const timer = setTimeout(onDataZoom, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [chartKey, onDataZoom]);
 
   if (isLoading) {
     return (
@@ -78,10 +122,8 @@ export function DemandCurveChart({
 
   const { curve, selected, baseline } = result;
 
-  // Round to exactly 4dp to match curve data precision
   const r4 = (v: number) => Math.round(v * 10000) / 10000;
 
-  // Build boundary line series (on hidden 2nd y-axis) + markArea
   const boundaryLineSeries: object[] = [];
   const shadedAreas: object[][] = [];
   if (priceRange) {
@@ -93,8 +135,6 @@ export function DemandCurveChart({
     const p95 = r4(priceRange.p95);
     const p99 = r4(priceRange.p99);
 
-    // Boundary lines as line series on hidden yAxisIndex:1 (0-1 range = full chart height)
-    // This avoids markLine's axis-tick snapping and doesn't distort the main y-axis
     for (const [key, val] of [["P1", p1], ["P5", p5], ["P95", p95], ["P99", p99]]) {
       boundaryLineSeries.push({
         type: "line" as const,
@@ -131,9 +171,11 @@ export function DemandCurveChart({
     animation: false,
     tooltip: {
       trigger: "axis" as const,
-      formatter: (params: { data: number[] }[]) => {
-        if (!params[0]) return "";
-        const [price, volume] = params[0].data;
+      axisPointer: { type: "cross" as const },
+      formatter: (params: { data: number[]; seriesIndex: number }[]) => {
+        const curveParam = params.find((p) => p.seriesIndex === 0);
+        if (!curveParam) return "";
+        const [price, volume] = curveParam.data;
         const curvePoint = curve.find(
           (p: CurvePoint) => Math.abs(p.price_per_litre - price) < 0.0001
         );
@@ -169,7 +211,6 @@ export function DemandCurveChart({
         scale: true,
         axisLabel: { formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)) },
       },
-      // Hidden y-axis for boundary lines (fixed 0-1 range = full chart height)
       {
         type: "value" as const,
         show: false,
@@ -178,8 +219,10 @@ export function DemandCurveChart({
       },
     ],
     dataZoom: [
-      { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005 },
-      { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005 },
+      { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005,
+        ...(savedZoom ? { startValue: savedZoom.startValue, endValue: savedZoom.endValue } : {}) },
+      { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005,
+        ...(savedZoom ? { startValue: savedZoom.startValue, endValue: savedZoom.endValue } : {}) },
     ],
     series: [
       {
@@ -221,6 +264,15 @@ export function DemandCurveChart({
           : undefined,
       },
       ...boundaryLineSeries,
+      ...scatterOverlays.map((overlay) => ({
+        type: "scatter" as const,
+        name: overlay.title,
+        yAxisIndex: 0,
+        data: overlay.points.map((p) => [p.price_per_litre, p.nielsen_total_volume]),
+        itemStyle: { color: overlay.color, opacity: 0.6 },
+        symbolSize: 6,
+        tooltip: { show: false },
+      })),
     ],
   };
 
@@ -252,11 +304,24 @@ export function DemandCurveChart({
                 </div>
               </>
             )}
+            {scatterOverlays.map((overlay) => (
+              <div key={overlay.id} className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full" style={{ background: overlay.color, opacity: 0.6 }} />
+                <span>{overlay.title}</span>
+              </div>
+            ))}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <ReactECharts ref={chartRef} option={option} style={{ height: 350 }} onEvents={{ dataZoom: onDataZoom }} />
+        <ReactECharts
+          key={chartKey}
+          ref={chartRef}
+          option={option}
+          notMerge={true}
+          style={{ height: 350 }}
+          onEvents={onEvents}
+        />
       </CardContent>
     </Card>
   );
