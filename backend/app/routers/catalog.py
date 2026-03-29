@@ -22,11 +22,6 @@ def list_customers():
     return VALID_CUSTOMERS
 
 
-@router.get("/catalog/promotions")
-def list_promotions():
-    return [0, 1]
-
-
 @router.post("/catalog/sku-lookup", response_model=SkuListResponse)
 def sku_lookup(body: SkuLookupRequest):
     df = get_dataset(body.dataset_id)
