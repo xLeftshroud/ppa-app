@@ -15,6 +15,7 @@ class UploadResponse(BaseModel):
 
 class SkuItem(BaseModel):
     product_sku_code: int
+    material_medium_description: str
     top_brand: str
     flavor_internal: str
     pack_type_internal: str

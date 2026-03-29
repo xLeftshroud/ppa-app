@@ -8,6 +8,7 @@ export interface UploadResponse {
 
 export interface SkuItem {
   product_sku_code: number;
+  material_medium_description: string;
   top_brand: string;
   flavor_internal: string;
   pack_type_internal: string;
@@ -90,4 +91,23 @@ export interface PriceRange {
   p50: number;
   p95: number;
   p99: number;
+}
+
+export interface ScatterFilter {
+  column: string;
+  value: string;
+}
+
+export interface ScatterRequest {
+  filters: ScatterFilter[];
+}
+
+export interface ScatterPoint {
+  price_per_litre: number;
+  nielsen_total_volume: number;
+}
+
+export interface ScatterResponse {
+  points: ScatterPoint[];
+  count: number;
 }

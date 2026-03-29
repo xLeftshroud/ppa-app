@@ -22,6 +22,14 @@ export function BaselinePriceInput() {
 
   const displayPrice = baselineOverride ?? baseline?.price_per_litre ?? null;
 
+  // Local draft for editing
+  const [draft, setDraft] = useState(displayPrice != null ? String(displayPrice) : "");
+
+  // Sync draft when display price changes externally
+  useEffect(() => {
+    setDraft(displayPrice != null ? String(displayPrice) : "");
+  }, [displayPrice]);
+
   const handleOverrideToggle = (checked: boolean) => {
     setOverrideEnabled(checked);
     if (!checked) {
@@ -29,10 +37,13 @@ export function BaselinePriceInput() {
     }
   };
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
+  const commitPrice = () => {
+    const val = parseFloat(draft);
     if (!isNaN(val) && val >= 0.01) {
-      setBaselineOverride(val);
+      if (val !== baselineOverride) setBaselineOverride(val);
+    } else {
+      // Revert to current display value
+      setDraft(displayPrice != null ? String(displayPrice) : "");
     }
   };
 
@@ -69,8 +80,12 @@ export function BaselinePriceInput() {
             type="number"
             step="0.01"
             min="0.01"
-            value={displayPrice ?? ""}
-            onChange={handlePriceChange}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commitPrice}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitPrice();
+            }}
             disabled={!overrideEnabled}
             placeholder={baseline ? String(baseline.price_per_litre) : "Enter baseline price"}
           />
