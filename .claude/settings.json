@@ -2,10 +2,14 @@
   "permissions": {
     "allow": [
       "Bash(npx vite build)",
-      "Bash(python:*)",
-      "Bash(python3:*)",
+      "Bash(python *)",
+      "Bash(python3 *)",
       "Bash(cat /c/Users/Samuel/Desktop/PPA/backend/data/*)",
-      "Bash(grep -r settings. /c/Users/Samuel/Desktop/PPA/backend/app --include=*.py)"
+      "Bash(grep -r settings. /c/Users/Samuel/Desktop/PPA/backend/app --include=*.py)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx|py\\)$\")"
     ]
   }
 }
