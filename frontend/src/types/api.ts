@@ -57,10 +57,15 @@ export interface SimulateResponse {
 
 export interface SimulateRequest {
   dataset_id: string;
-  product_sku_code: number;
+  product_sku_code: number | null;
   customer: string;
   promotion_indicator: 0 | 1;
   week: number;
+  top_brand: string | null;
+  flavor_internal: string | null;
+  pack_type_internal: string | null;
+  pack_size_internal: number | null;
+  units_per_package_internal: number | null;
   baseline_override_price_per_litre: number | null;
   selected_price_change_pct: number | null;
   selected_new_price_per_litre: number | null;
