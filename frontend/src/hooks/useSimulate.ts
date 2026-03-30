@@ -32,11 +32,8 @@ export function useSimulate() {
   const hasBaseline = !!baseline || baselineOverride != null;
   const canSimulate = !!datasetId && !!selectedCustomer;
 
-  // When no baseline and no override, we need a direct price (can't use percentage)
-  const needsDirectPrice = !hasBaseline && selectedNewPrice == null;
-
   const buildParams = useCallback((): SimulateRequest | null => {
-    if (!canSimulate || needsDirectPrice) return null;
+    if (!canSimulate) return null;
     return {
       dataset_id: datasetId!,
       product_sku_code: selectedSku,
@@ -49,10 +46,10 @@ export function useSimulate() {
       pack_size_internal: attrPackSize,
       units_per_package_internal: attrUnitsPkg,
       baseline_override_price_per_litre: baselineOverride,
-      selected_price_change_pct: selectedNewPrice != null ? null : selectedPriceChangePct,
+      selected_price_change_pct: selectedNewPrice != null ? null : (hasBaseline ? selectedPriceChangePct : null),
       selected_new_price_per_litre: selectedNewPrice,
     };
-  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, needsDirectPrice]);
+  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, hasBaseline]);
 
   useEffect(() => {
     const params = buildParams();

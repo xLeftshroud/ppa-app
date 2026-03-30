@@ -185,7 +185,7 @@ export function DemandCurveChart({
           `<strong>Price:</strong> ${price.toFixed(4)}`,
           `<strong>Volume:</strong> ${Math.round(volume).toLocaleString()}`,
           `<strong>Change:</strong> ${pct > 0 ? "+" : ""}${pct.toFixed(4)}%`,
-          `<strong>Elasticity:</strong> ${selected.elasticity.toFixed(4)}`,
+          ...(selected ? [`<strong>Elasticity:</strong> ${selected.elasticity.toFixed(4)}`] : []),
         ];
         if (confidence) {
           const color = getConfidenceColor(confidence);
@@ -236,14 +236,14 @@ export function DemandCurveChart({
         markPoint: {
           animation: false,
           data: [
-            {
+            ...(selected ? [{
               coord: [selected.new_price_per_litre, selected.predicted_volume_units],
               name: "Selected",
               symbol: "circle",
               symbolSize: 14,
               itemStyle: { color: "#ef4444", borderColor: "#fff", borderWidth: 2 },
               label: { show: false },
-            },
+            }] : []),
             ...(baseline ? [{
               coord: [baseline.price_per_litre, baseline.volume_units],
               name: "Baseline",
@@ -282,10 +282,12 @@ export function DemandCurveChart({
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Demand Curve</CardTitle>
           <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span>Selected</span>
-            </div>
+            {selected && (
+              <div className="flex items-center gap-1">
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <span>Selected</span>
+              </div>
+            )}
             {baseline && (
               <div className="flex items-center gap-1">
                 <div className="w-3 h-3 rotate-45 bg-green-500" />

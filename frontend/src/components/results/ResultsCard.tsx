@@ -56,7 +56,7 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
   }
 
   const { baseline, selected } = result;
-  const deltaColor = selected.delta_volume_units >= 0 ? "text-green-600" : "text-red-600";
+  const deltaColor = selected && selected.delta_volume_units >= 0 ? "text-green-600" : "text-red-600";
 
   return (
     <Card>
@@ -66,19 +66,23 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
       <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <Metric label="Baseline Price" value={baseline ? baseline.price_per_litre.toFixed(4) : "N/A"} sub={baseline ? `Week ${baseline.yearweek}` : "No baseline"} />
         <Metric label="Baseline Volume" value={baseline ? baseline.volume_units.toLocaleString() : "N/A"} sub={baseline ? "units" : "No baseline"} />
-        <Metric label="New Price" value={`${selected.new_price_per_litre.toFixed(4)}`} sub={`${selected.price_change_pct > 0 ? "+" : ""}${selected.price_change_pct.toFixed(1)}%`} highlight />
-        <Metric label="Predicted Volume" value={Math.round(selected.predicted_volume_units).toLocaleString()} sub="units" />
-        <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Volume Change</p>
-          <p className={`text-lg font-semibold font-mono ${deltaColor}`}>
-            {selected.delta_volume_units >= 0 ? "+" : ""}
-            {Math.round(selected.delta_volume_units).toLocaleString()}
-          </p>
-          <p className={`text-xs ${deltaColor}`}>
-            {(selected.delta_volume_pct * 100).toFixed(2)}%
-          </p>
-        </div>
-        <Metric label="Elasticity" value={selected.elasticity.toFixed(4)} />
+        <Metric label="New Price" value={selected ? selected.new_price_per_litre.toFixed(4) : "N/A"} sub={selected ? `${selected.price_change_pct > 0 ? "+" : ""}${selected.price_change_pct.toFixed(1)}%` : "No price selected"} highlight={!!selected} />
+        <Metric label="Predicted Volume" value={selected ? Math.round(selected.predicted_volume_units).toLocaleString() : "N/A"} sub={selected ? "units" : "No price selected"} />
+        {selected ? (
+          <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">Volume Change</p>
+            <p className={`text-lg font-semibold font-mono ${deltaColor}`}>
+              {selected.delta_volume_units >= 0 ? "+" : ""}
+              {Math.round(selected.delta_volume_units).toLocaleString()}
+            </p>
+            <p className={`text-xs ${deltaColor}`}>
+              {(selected.delta_volume_pct * 100).toFixed(2)}%
+            </p>
+          </div>
+        ) : (
+          <Metric label="Volume Change" value="N/A" sub="No price selected" />
+        )}
+        <Metric label="Elasticity" value={selected ? selected.elasticity.toFixed(4) : "N/A"} />
       </CardContent>
     </Card>
   );
