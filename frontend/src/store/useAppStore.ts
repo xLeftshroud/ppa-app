@@ -97,18 +97,24 @@ export const useAppStore = create<AppState>()((set) => ({
     set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, simulateResult: null }),
 
   setSelectedSku: (sku, attrs) =>
-    set({
-      selectedSku: sku,
-      skuAttributes: attrs,
-      attrBrand: attrs?.top_brand ?? null,
-      attrFlavor: attrs?.flavor_internal ?? null,
-      attrPackType: attrs?.pack_type_internal ?? null,
-      attrPackSize: attrs?.pack_size_internal ?? null,
-      attrUnitsPkg: attrs?.units_per_package_internal ?? null,
-      baseline: null,
-      baselineOverride: null,
-      simulateResult: null,
-    }),
+    set(sku != null
+      ? {
+          selectedSku: sku,
+          skuAttributes: attrs,
+          attrBrand: attrs?.top_brand ?? null,
+          attrFlavor: attrs?.flavor_internal ?? null,
+          attrPackType: attrs?.pack_type_internal ?? null,
+          attrPackSize: attrs?.pack_size_internal ?? null,
+          attrUnitsPkg: attrs?.units_per_package_internal ?? null,
+          baseline: null,
+          baselineOverride: null,
+          simulateResult: null,
+        }
+      : {
+          selectedSku: null,
+          skuAttributes: null,
+        },
+    ),
 
   setAttrBrand: (v) => set({ attrBrand: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
   setAttrFlavor: (v) => set({ attrFlavor: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
