@@ -60,5 +60,5 @@ class SimulateResponse(BaseModel):
     model_info: ModelInfo
     warnings: list[str]
     baseline: Optional[BaselineResponse] = None
-    selected: SelectedResult
+    selected: Optional[SelectedResult] = None
     curve: list[CurvePoint]

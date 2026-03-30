@@ -133,74 +133,90 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             predicted_volume_units=round(vol, 2),
         ))
 
-    # --- Selected point ---
-    if req.selected_new_price_per_litre is not None:
-        p0 = req.selected_new_price_per_litre
-        if baseline_price is not None and baseline_price > 0:
-            selected_pct = (p0 / baseline_price - 1) * 100
+    # --- Selected point (only when a price input is provided) ---
+    has_price_input = (req.selected_new_price_per_litre is not None
+                       or req.selected_price_change_pct is not None)
+
+    selected_result: Optional[SelectedResult] = None
+
+    if has_price_input:
+        if req.selected_new_price_per_litre is not None:
+            p0 = req.selected_new_price_per_litre
+            if baseline_price is not None and baseline_price > 0:
+                selected_pct = (p0 / baseline_price - 1) * 100
+            else:
+                selected_pct = 0.0
         else:
-            selected_pct = 0.0
-    else:
-        selected_pct = req.selected_price_change_pct  # type: ignore[assignment]
-        if baseline_price is not None and baseline_price > 0:
-            p0 = max(0.01, baseline_price * (1 + selected_pct / 100))
+            selected_pct = req.selected_price_change_pct  # type: ignore[assignment]
+            if baseline_price is not None and baseline_price > 0:
+                p0 = max(0.01, baseline_price * (1 + selected_pct / 100))
+            else:
+                raise ValidationError("Cannot use percentage-based pricing without a baseline. Provide selected_new_price_per_litre or a baseline_override_price_per_litre.")
+
+        # Predict V0
+        try:
+            v0_df = build_feature_df([p0], req.customer,
+                                     req.promotion_indicator, req.week, attrs,
+                                     continuous_week)
+            v0 = float(pipeline.predict(v0_df)[0])
+        except Exception as exc:
+            raise InferenceError(f"Selected-point prediction failed: {exc}")
+
+        # --- Elasticity (local +/-1% differential) ---
+        p_minus = max(0.01, p0 * 0.99)
+        p_plus = p0 * 1.01
+
+        try:
+            elast_prices = [p_minus, p_plus]
+            elast_df = build_feature_df(elast_prices, req.customer,
+                                        req.promotion_indicator, req.week, attrs,
+                                        continuous_week)
+            elast_vols = pipeline.predict(elast_df)
+            v_minus = float(elast_vols[0])
+            v_plus = float(elast_vols[1])
+        except Exception as exc:
+            raise InferenceError(f"Elasticity prediction failed: {exc}")
+
+        if p_minus == p0:
+            if v0 != 0 and (p_plus - p0) != 0:
+                elasticity = ((v_plus - v0) / v0) / ((p_plus - p0) / p0)
+            else:
+                elasticity = 0.0
         else:
-            raise ValidationError("Cannot use percentage-based pricing without a baseline. Provide selected_new_price_per_litre or a baseline_override_price_per_litre.")
+            if v0 != 0 and (p_plus - p_minus) != 0:
+                elasticity = ((v_plus - v_minus) / v0) / ((p_plus - p_minus) / p0)
+            else:
+                elasticity = 0.0
 
-    # Predict V0
-    try:
-        v0_df = build_feature_df([p0], req.customer,
-                                 req.promotion_indicator, req.week, attrs,
-                                 continuous_week)
-        v0 = float(pipeline.predict(v0_df)[0])
-    except Exception as exc:
-        raise InferenceError(f"Selected-point prediction failed: {exc}")
-
-    # --- Elasticity (local +/-1% differential) ---
-    p_minus = max(0.01, p0 * 0.99)
-    p_plus = p0 * 1.01
-
-    try:
-        elast_prices = [p_minus, p_plus]
-        elast_df = build_feature_df(elast_prices, req.customer,
-                                    req.promotion_indicator, req.week, attrs,
-                                    continuous_week)
-        elast_vols = pipeline.predict(elast_df)
-        v_minus = float(elast_vols[0])
-        v_plus = float(elast_vols[1])
-    except Exception as exc:
-        raise InferenceError(f"Elasticity prediction failed: {exc}")
-
-    if p_minus == p0:
-        if v0 != 0 and (p_plus - p0) != 0:
-            elasticity = ((v_plus - v0) / v0) / ((p_plus - p0) / p0)
+        # Delta from baseline (0 if no baseline)
+        if baseline_volume is not None:
+            delta_vol = v0 - baseline_volume
+            delta_pct = delta_vol / baseline_volume if baseline_volume != 0 else 0.0
         else:
-            elasticity = 0.0
-    else:
-        if v0 != 0 and (p_plus - p_minus) != 0:
-            elasticity = ((v_plus - v_minus) / v0) / ((p_plus - p_minus) / p0)
-        else:
-            elasticity = 0.0
+            delta_vol = 0.0
+            delta_pct = 0.0
 
-    # Delta from baseline (0 if no baseline)
-    if baseline_volume is not None:
-        delta_vol = v0 - baseline_volume
-        delta_pct = delta_vol / baseline_volume if baseline_volume != 0 else 0.0
-    else:
-        delta_vol = 0.0
-        delta_pct = 0.0
+        selected_result = SelectedResult(
+            price_change_pct=round(selected_pct, 4),
+            new_price_per_litre=round(p0, 6),
+            predicted_volume_units=round(v0, 2),
+            delta_volume_units=round(delta_vol, 2),
+            delta_volume_pct=round(delta_pct, 6),
+            elasticity=round(elasticity, 6),
+        )
 
     # --- Warnings ---
     warnings: list[str] = []
     if bl_raw is None:
         warnings.append("No baseline data found for this SKU + customer combination")
-    price_meta = metadata.get("price_per_litre", {})
-    p1 = price_meta.get("p1", 0.0)
-    p99 = price_meta.get("p99", 999.0)
-    if p0 < p1:
-        warnings.append(f"Selected price ({p0:.4f}) is below training distribution p1 ({p1})")
-    if p0 > p99:
-        warnings.append(f"Selected price ({p0:.4f}) is above training distribution p99 ({p99})")
+    if has_price_input:
+        price_meta = metadata.get("price_per_litre", {})
+        p1 = price_meta.get("p1", 0.0)
+        p99 = price_meta.get("p99", 999.0)
+        if p0 < p1:
+            warnings.append(f"Selected price ({p0:.4f}) is below training distribution p1 ({p1})")
+        if p0 > p99:
+            warnings.append(f"Selected price ({p0:.4f}) is above training distribution p99 ({p99})")
 
     return SimulateResponse(
         model_info=ModelInfo(
@@ -210,13 +226,6 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         ),
         warnings=warnings,
         baseline=baseline_response,
-        selected=SelectedResult(
-            price_change_pct=round(selected_pct, 4),
-            new_price_per_litre=round(p0, 6),
-            predicted_volume_units=round(v0, 2),
-            delta_volume_units=round(delta_vol, 2),
-            delta_volume_pct=round(delta_pct, 6),
-            elasticity=round(elasticity, 6),
-        ),
+        selected=selected_result,
         curve=curve_points,
     )

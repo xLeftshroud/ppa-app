@@ -25,12 +25,6 @@ class SimulateRequest(BaseModel):
     selected_price_change_pct: Optional[float] = Field(None, ge=-100, le=100)
     selected_new_price_per_litre: Optional[float] = Field(None, ge=0.01)
 
-    @model_validator(mode="after")
-    def check_price_input(self):
-        if self.selected_new_price_per_litre is None and self.selected_price_change_pct is None:
-            raise ValueError("Either selected_new_price_per_litre or selected_price_change_pct is required")
-        return self
-
 
 class SkuLookupRequest(BaseModel):
     dataset_id: str
