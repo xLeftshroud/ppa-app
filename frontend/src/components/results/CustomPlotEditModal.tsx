@@ -76,7 +76,7 @@ export function CustomPlotEditModal({ plot, open, onClose }: Props) {
           <div className="space-y-2">
             <Label>Filter Columns</Label>
             <p className="text-xs text-muted-foreground">
-              Rows matching the current SKU's values for these columns will be shown as scatter points.
+              Rows matching the current attribute values for these columns will be shown as scatter points.
             </p>
             {columns.map((col, i) => (
               <div key={i} className="flex items-center gap-2">
