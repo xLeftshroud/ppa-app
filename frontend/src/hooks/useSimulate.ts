@@ -15,6 +15,11 @@ export function useSimulate() {
     baselineOverride,
     selectedPriceChangePct,
     selectedNewPrice,
+    attrBrand,
+    attrFlavor,
+    attrPackType,
+    attrPackSize,
+    attrUnitsPkg,
     setSimulateResult,
   } = useAppStore();
 
@@ -25,7 +30,7 @@ export function useSimulate() {
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
   const hasBaseline = !!baseline || baselineOverride != null;
-  const canSimulate = !!datasetId && selectedSku != null && !!selectedCustomer;
+  const canSimulate = !!datasetId && !!selectedCustomer;
 
   // When no baseline and no override, we need a direct price (can't use percentage)
   const needsDirectPrice = !hasBaseline && selectedNewPrice == null;
@@ -34,15 +39,20 @@ export function useSimulate() {
     if (!canSimulate || needsDirectPrice) return null;
     return {
       dataset_id: datasetId!,
-      product_sku_code: selectedSku!,
+      product_sku_code: selectedSku,
       customer: selectedCustomer!,
       promotion_indicator: promotionIndicator,
       week,
+      top_brand: attrBrand,
+      flavor_internal: attrFlavor,
+      pack_type_internal: attrPackType,
+      pack_size_internal: attrPackSize,
+      units_per_package_internal: attrUnitsPkg,
       baseline_override_price_per_litre: baselineOverride,
       selected_price_change_pct: selectedNewPrice != null ? null : selectedPriceChangePct,
       selected_new_price_per_litre: selectedNewPrice,
     };
-  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, needsDirectPrice]);
+  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, needsDirectPrice]);
 
   useEffect(() => {
     const params = buildParams();
@@ -64,6 +74,11 @@ export function useSimulate() {
     debouncedParams?.customer,
     debouncedParams?.week,
     debouncedParams?.promotion_indicator,
+    debouncedParams?.top_brand,
+    debouncedParams?.flavor_internal,
+    debouncedParams?.pack_type_internal,
+    debouncedParams?.pack_size_internal,
+    debouncedParams?.units_per_package_internal,
     debouncedParams?.baseline_override_price_per_litre ?? "auto",
     debouncedParams?.selected_new_price_per_litre ?? debouncedParams?.selected_price_change_pct,
   ];
