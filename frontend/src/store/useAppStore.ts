@@ -116,17 +116,17 @@ export const useAppStore = create<AppState>()((set) => ({
         },
     ),
 
-  setAttrBrand: (v) => set({ attrBrand: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
-  setAttrFlavor: (v) => set({ attrFlavor: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
-  setAttrPackType: (v) => set({ attrPackType: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
-  setAttrPackSize: (v) => set({ attrPackSize: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
-  setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
+  setAttrBrand: (v) => set({ attrBrand: v, selectedSku: null, skuAttributes: null }),
+  setAttrFlavor: (v) => set({ attrFlavor: v, selectedSku: null, skuAttributes: null }),
+  setAttrPackType: (v) => set({ attrPackType: v, selectedSku: null, skuAttributes: null }),
+  setAttrPackSize: (v) => set({ attrPackSize: v, selectedSku: null, skuAttributes: null }),
+  setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null }),
 
   setCustomer: (c) =>
-    set({ selectedCustomer: c, baseline: null, baselineOverride: null, simulateResult: null }),
+    set({ selectedCustomer: c, baseline: null, baselineOverride: null }),
 
-  setPromotion: (p) => set({ promotionIndicator: p, simulateResult: null }),
-  setWeek: (w) => set({ week: w, simulateResult: null }),
+  setPromotion: (p) => set({ promotionIndicator: p }),
+  setWeek: (w) => set({ week: w }),
 
   setBaseline: (bl) => set({ baseline: bl }),
   setBaselineOverride: (price) => set({ baselineOverride: price, simulateResult: null }),
