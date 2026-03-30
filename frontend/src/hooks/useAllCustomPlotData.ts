@@ -30,12 +30,12 @@ function buildAttrMap(
 }
 
 function buildFilters(plot: CustomPlot, attrMap: Record<string, string>): ScatterFilter[] {
-  return plot.columns
-    .filter((col) => col in attrMap)
-    .map((col) => ({
-      column: col,
-      value: attrMap[col],
-    }));
+  // If any requested column has no value, the entire filter set is invalid
+  if (plot.columns.some((col) => !(col in attrMap))) return [];
+  return plot.columns.map((col) => ({
+    column: col,
+    value: attrMap[col],
+  }));
 }
 
 export function useAllCustomPlotData() {
