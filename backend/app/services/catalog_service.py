@@ -26,6 +26,18 @@ def get_sku_attributes(df: pd.DataFrame, product_sku_code: int) -> dict | None:
     return rows.iloc[0].to_dict()
 
 
+def get_distinct_brands(df: pd.DataFrame) -> list[str]:
+    return sorted(df["top_brand"].dropna().unique().tolist())
+
+
+def get_distinct_flavors(df: pd.DataFrame) -> list[str]:
+    return sorted(df["flavor_internal"].dropna().unique().tolist())
+
+
+def get_distinct_pack_types(df: pd.DataFrame) -> list[str]:
+    return sorted(df["pack_type_internal"].dropna().unique().tolist())
+
+
 def lookup_sku_by_attributes(
     df: pd.DataFrame,
     top_brand: str,

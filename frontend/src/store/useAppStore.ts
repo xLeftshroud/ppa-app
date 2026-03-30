@@ -19,6 +19,13 @@ interface AppState {
   selectedSku: number | null;
   skuAttributes: SkuItem | null;
 
+  // SKU Attributes (editable)
+  attrBrand: string | null;
+  attrFlavor: string | null;
+  attrPackType: string | null;
+  attrPackSize: number | null;
+  attrUnitsPkg: number | null;
+
   // Controls
   selectedCustomer: string | null;
   promotionIndicator: 0 | 1;
@@ -41,6 +48,11 @@ interface AppState {
   // Actions
   setDataset: (id: string, rows: number, skus: number) => void;
   setSelectedSku: (sku: number | null, attrs: SkuItem | null) => void;
+  setAttrBrand: (v: string | null) => void;
+  setAttrFlavor: (v: string | null) => void;
+  setAttrPackType: (v: string | null) => void;
+  setAttrPackSize: (v: number | null) => void;
+  setAttrUnitsPkg: (v: number | null) => void;
   setCustomer: (c: string | null) => void;
   setPromotion: (p: 0 | 1) => void;
   setWeek: (w: number) => void;
@@ -61,6 +73,11 @@ const initialState = {
   skuCount: null,
   selectedSku: null,
   skuAttributes: null,
+  attrBrand: null,
+  attrFlavor: null,
+  attrPackType: null,
+  attrPackSize: null,
+  attrUnitsPkg: null,
   selectedCustomer: null,
   promotionIndicator: 0 as const,
   week: 1,
@@ -76,10 +93,27 @@ export const useAppStore = create<AppState>()((set) => ({
   ...initialState,
 
   setDataset: (id, rows, skus) =>
-    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, baseline: null, simulateResult: null }),
+    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, simulateResult: null }),
 
   setSelectedSku: (sku, attrs) =>
-    set({ selectedSku: sku, skuAttributes: attrs, baseline: null, baselineOverride: null, simulateResult: null }),
+    set({
+      selectedSku: sku,
+      skuAttributes: attrs,
+      attrBrand: attrs?.top_brand ?? null,
+      attrFlavor: attrs?.flavor_internal ?? null,
+      attrPackType: attrs?.pack_type_internal ?? null,
+      attrPackSize: attrs?.pack_size_internal ?? null,
+      attrUnitsPkg: attrs?.units_per_package_internal ?? null,
+      baseline: null,
+      baselineOverride: null,
+      simulateResult: null,
+    }),
+
+  setAttrBrand: (v) => set({ attrBrand: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
+  setAttrFlavor: (v) => set({ attrFlavor: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
+  setAttrPackType: (v) => set({ attrPackType: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
+  setAttrPackSize: (v) => set({ attrPackSize: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
+  setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null, simulateResult: null }),
 
   setCustomer: (c) =>
     set({ selectedCustomer: c, baseline: null, baselineOverride: null, simulateResult: null }),

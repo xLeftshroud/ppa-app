@@ -8,8 +8,13 @@ import type { SkuItem } from "@/types/api";
 export function SkuSelector() {
   const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
-  const skuAttributes = useAppStore((s) => s.skuAttributes);
   const setSelectedSku = useAppStore((s) => s.setSelectedSku);
+
+  const attrBrand = useAppStore((s) => s.attrBrand);
+  const attrFlavor = useAppStore((s) => s.attrFlavor);
+  const attrPackType = useAppStore((s) => s.attrPackType);
+  const attrPackSize = useAppStore((s) => s.attrPackSize);
+  const attrUnitsPkg = useAppStore((s) => s.attrUnitsPkg);
 
   const { data, isLoading } = useSkus(datasetId);
   const items = data?.items ?? [];
@@ -28,16 +33,28 @@ export function SkuSelector() {
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Filter items by search text (match description or sku code)
+  // Pre-filter items by non-null attribute values (AND logic)
+  const attrFiltered = useMemo(() => {
+    return items.filter((item: SkuItem) => {
+      if (attrBrand != null && item.top_brand !== attrBrand) return false;
+      if (attrFlavor != null && item.flavor_internal !== attrFlavor) return false;
+      if (attrPackType != null && item.pack_type_internal !== attrPackType) return false;
+      if (attrPackSize != null && item.pack_size_internal !== attrPackSize) return false;
+      if (attrUnitsPkg != null && item.units_per_package_internal !== attrUnitsPkg) return false;
+      return true;
+    });
+  }, [items, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg]);
+
+  // Then filter by search text (match description or sku code)
   const filtered = useMemo(() => {
-    if (!search.trim()) return items;
+    if (!search.trim()) return attrFiltered;
     const q = search.toLowerCase();
-    return items.filter(
+    return attrFiltered.filter(
       (item: SkuItem) =>
         item.material_medium_description.toLowerCase().includes(q) ||
         String(item.product_sku_code).includes(q),
     );
-  }, [items, search]);
+  }, [attrFiltered, search]);
 
   // Reset highlight when filter changes
   useEffect(() => {
@@ -96,84 +113,52 @@ export function SkuSelector() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="space-y-1.5" ref={containerRef}>
-        <Label>Product SKU</Label>
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            placeholder={isLoading ? "Loading SKUs..." : "Search SKU..."}
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              if (!open) setOpen(true);
-            }}
-            onFocus={() => {
-              setOpen(true);
-              // Select all text so user can easily replace or continue editing
-              inputRef.current?.select();
-            }}
-            onKeyDown={handleKeyDown}
-            disabled={!datasetId || isLoading}
-          />
-          {open && (
-            <div
-              ref={listRef}
-              className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-white shadow-md"
-            >
-              {filtered.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-muted-foreground">No SKUs found</div>
-              ) : (
-                filtered.map((item: SkuItem, idx: number) => (
-                  <div
-                    key={item.product_sku_code}
-                    className={`px-3 py-2 text-sm cursor-pointer truncate ${
-                      idx === highlightIndex ? "bg-accent text-accent-foreground" : ""
-                    } ${item.product_sku_code === selectedSku ? "font-semibold" : ""}`}
-                    onMouseEnter={() => setHighlightIndex(idx)}
-                    onMouseDown={(e) => {
-                      e.preventDefault(); // prevent blur before click
-                      handleSelect(item);
-                    }}
-                  >
-                    <span className="text-muted-foreground mr-1.5">{item.product_sku_code}</span>
-                    {item.material_medium_description}
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
+    <div className="space-y-1.5" ref={containerRef}>
+      <Label>Product SKU</Label>
+      <div className="relative">
+        <Input
+          ref={inputRef}
+          placeholder={isLoading ? "Loading SKUs..." : "Search SKU..."}
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            if (!open) setOpen(true);
+          }}
+          onFocus={() => {
+            setOpen(true);
+            inputRef.current?.select();
+          }}
+          onKeyDown={handleKeyDown}
+          disabled={!datasetId || isLoading}
+        />
+        {open && (
+          <div
+            ref={listRef}
+            className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border bg-white shadow-md"
+          >
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-sm text-muted-foreground">No SKUs found</div>
+            ) : (
+              filtered.map((item: SkuItem, idx: number) => (
+                <div
+                  key={item.product_sku_code}
+                  className={`px-3 py-2 text-sm cursor-pointer truncate ${
+                    idx === highlightIndex ? "bg-accent text-accent-foreground" : ""
+                  } ${item.product_sku_code === selectedSku ? "font-semibold" : ""}`}
+                  onMouseEnter={() => setHighlightIndex(idx)}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    handleSelect(item);
+                  }}
+                >
+                  <span className="text-muted-foreground mr-1.5">{item.product_sku_code}</span>
+                  {item.material_medium_description}
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
-
-      {skuAttributes && (
-        <div className="grid grid-cols-2 gap-2 text-xs bg-muted p-3 rounded-md">
-          <div className="col-span-2">
-            <span className="text-muted-foreground">Description:</span>{" "}
-            <span className="font-medium">{skuAttributes.material_medium_description}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Brand:</span>{" "}
-            <span className="font-medium">{skuAttributes.top_brand}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Flavor:</span>{" "}
-            <span className="font-medium">{skuAttributes.flavor_internal}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Pack Type:</span>{" "}
-            <span className="font-medium">{skuAttributes.pack_type_internal}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Pack Size:</span>{" "}
-            <span className="font-medium">{skuAttributes.pack_size_internal}ml</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Units/Pkg:</span>{" "}
-            <span className="font-medium">{skuAttributes.units_per_package_internal}</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
