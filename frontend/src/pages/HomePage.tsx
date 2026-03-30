@@ -36,6 +36,7 @@ export function HomePage() {
   const setAttrPackType = useAppStore((s) => s.setAttrPackType);
   const setAttrPackSize = useAppStore((s) => s.setAttrPackSize);
   const setAttrUnitsPkg = useAppStore((s) => s.setAttrUnitsPkg);
+  const clearSkuAttrs = useAppStore((s) => s.clearSkuAttrs);
   const { isLoading, isFetching, error, canSimulate, runNow } = useSimulate();
   const { data: priceRange } = usePriceRange(selectedSku);
   const { data: brands = [] } = useBrands(datasetId);
@@ -87,6 +88,9 @@ export function HomePage() {
                 <PackTypeSelect options={packTypes} value={attrPackType} onChange={setAttrPackType} disabled={!datasetId} />
                 <NullableNumberInput label="Units/Pkg" value={attrUnitsPkg} onChange={setAttrUnitsPkg} min={1} disabled={!datasetId} />
                 <NullableNumberInput label="Pack Size" value={attrPackSize} onChange={setAttrPackSize} min={1} disabled={!datasetId} />
+                <div className="flex items-end">
+                  <Button variant="outline" size="sm" className="w-full" onClick={clearSkuAttrs}>Clear All</Button>
+                </div>
               </div>
             </div>
 
