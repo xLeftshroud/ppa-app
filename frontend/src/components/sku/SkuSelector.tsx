@@ -61,16 +61,19 @@ export function SkuSelector() {
     setHighlightIndex(0);
   }, [filtered]);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click; confirm null if search is empty
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        if (!search.trim() && selectedSku != null) {
+          handleClear();
+        }
         setOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [search, selectedSku]);
 
   // Scroll highlighted item into view
   useEffect(() => {
@@ -82,6 +85,12 @@ export function SkuSelector() {
   const handleSelect = (item: SkuItem) => {
     setSelectedSku(item.product_sku_code, item);
     setSearch(String(item.product_sku_code));
+    setOpen(false);
+  };
+
+  const handleClear = () => {
+    setSelectedSku(null, null);
+    setSearch("");
     setOpen(false);
   };
 
@@ -104,7 +113,11 @@ export function SkuSelector() {
         break;
       case "Enter":
         e.preventDefault();
-        if (filtered[highlightIndex]) handleSelect(filtered[highlightIndex]);
+        if (!search.trim()) {
+          handleClear();
+        } else if (filtered[highlightIndex]) {
+          handleSelect(filtered[highlightIndex]);
+        }
         break;
       case "Escape":
         setOpen(false);
