@@ -61,6 +61,7 @@ interface AppState {
   setPriceChangePct: (pct: number) => void;
   setNewPrice: (price: number | null) => void;
   setSimulateResult: (result: SimulateResponse | null) => void;
+  clearSkuAttrs: () => void;
   addCustomPlot: (plot: CustomPlot) => void;
   updateCustomPlot: (id: string, patch: Partial<CustomPlot>) => void;
   removeCustomPlot: (id: string) => void;
@@ -128,6 +129,8 @@ export const useAppStore = create<AppState>()((set) => ({
   setNewPrice: (price) => set({ selectedNewPrice: price, simulateResult: null }),
 
   setSimulateResult: (result) => set({ simulateResult: result }),
+
+  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, baselineOverride: null, simulateResult: null }),
 
   addCustomPlot: (plot) => set((s) => ({ customPlots: [...s.customPlots, plot] })),
   updateCustomPlot: (id, patch) => set((s) => ({
