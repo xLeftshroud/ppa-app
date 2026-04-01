@@ -32,7 +32,14 @@ export function BaselinePriceInput() {
 
   const handleOverrideToggle = (checked: boolean) => {
     setOverrideEnabled(checked);
-    if (!checked) {
+    if (checked) {
+      // Immediately commit the current displayed price as override
+      // so the backend predicts volume at this price via the model
+      const current = baseline?.price_per_litre;
+      if (current != null && current >= 0.01) {
+        setBaselineOverride(current);
+      }
+    } else {
       setBaselineOverride(null);
     }
   };

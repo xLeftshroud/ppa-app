@@ -1,7 +1,7 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { runSimulation } from "@/api/simulate";
 import { useAppStore } from "@/store/useAppStore";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SimulateRequest } from "@/types/api";
 
 export function useSimulate() {
@@ -23,11 +23,13 @@ export function useSimulate() {
     setSimulateResult,
   } = useAppStore();
 
-  const queryClient = useQueryClient();
-
   const [submittedParams, setSubmittedParams] = useState<SimulateRequest | null>(null);
+  const runCounter = useRef(0);
+  const [runId, setRunId] = useState(0);
 
-  const hasBaseline = !!baseline || baselineOverride != null;
+  // Backend resolves baseline from SKU+customer or override — only trust override
+  // and current SKU presence for deciding whether percentage pricing is safe
+  const canUsePercentage = baselineOverride != null || (!!selectedSku && !!baseline);
   const canSimulate = !!datasetId && !!selectedCustomer;
 
   const buildParams = useCallback((): SimulateRequest | null => {
@@ -44,31 +46,15 @@ export function useSimulate() {
       pack_size_internal: attrPackSize,
       units_per_package_internal: attrUnitsPkg,
       baseline_override_price_per_litre: baselineOverride,
-      selected_price_change_pct: selectedNewPrice != null ? null : (hasBaseline ? selectedPriceChangePct : null),
+      selected_price_change_pct: selectedNewPrice != null ? null : (canUsePercentage ? selectedPriceChangePct : null),
       selected_new_price_per_litre: selectedNewPrice,
     };
-  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, hasBaseline]);
-
-  const queryKey = [
-    "simulate",
-    submittedParams?.dataset_id,
-    submittedParams?.product_sku_code,
-    submittedParams?.customer,
-    submittedParams?.week,
-    submittedParams?.promotion_indicator,
-    submittedParams?.top_brand,
-    submittedParams?.flavor_internal,
-    submittedParams?.pack_type_internal,
-    submittedParams?.pack_size_internal,
-    submittedParams?.units_per_package_internal,
-    submittedParams?.baseline_override_price_per_litre ?? "auto",
-    submittedParams?.selected_new_price_per_litre ?? submittedParams?.selected_price_change_pct,
-  ];
+  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, canUsePercentage]);
 
   const query = useQuery({
-    queryKey,
+    queryKey: ["simulate", runId],
     queryFn: () => runSimulation(submittedParams!),
-    enabled: !!submittedParams,
+    enabled: !!submittedParams && runId > 0,
     structuralSharing: false,
   });
 
@@ -78,13 +64,14 @@ export function useSimulate() {
     }
   }, [query.data, setSimulateResult]);
 
-  // Manual trigger: build params and fire query
+  // Manual trigger: build params, bump counter to force fresh query
   const runNow = useCallback(() => {
     const params = buildParams();
     if (!params) return;
+    runCounter.current += 1;
     setSubmittedParams(params);
-    queryClient.invalidateQueries({ queryKey: ["simulate"] });
-  }, [buildParams, queryClient]);
+    setRunId(runCounter.current);
+  }, [buildParams]);
 
   return { ...query, canSimulate, runNow };
 }
