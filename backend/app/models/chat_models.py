@@ -7,6 +7,14 @@ from pydantic import BaseModel, Field
 ChatProviderId = Literal["openai", "ollama"]
 
 
+class ChatCustomPlotSummary(BaseModel):
+    id: str
+    title: str
+    color: str
+    is_visible: bool
+    columns: list[str] = Field(default_factory=list)
+
+
 class AppStateSnapshot(BaseModel):
     dataset_id: str | None = None
     selected_sku: int | None = None
@@ -28,6 +36,7 @@ class AppStateSnapshot(BaseModel):
     last_predicted_volume: float | None = None
     last_elasticity: float | None = None
     last_delta_volume_pct: float | None = None
+    custom_plots: list[ChatCustomPlotSummary] = Field(default_factory=list)
 
 
 class ChatMessage(BaseModel):
