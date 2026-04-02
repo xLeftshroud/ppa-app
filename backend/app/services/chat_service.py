@@ -8,11 +8,12 @@ from app.models.chat_models import (
     AppStateSnapshot,
     ChatRequest,
     ChatResponse,
+    ChatProvidersResponse,
     SuggestedAction,
     UIAction,
 )
 from app.services.chat_tools import execute_tool, get_tool_definitions
-from app.services.llm_client import get_llm_client, get_model_name
+from app.services.llm_client import get_chat_providers, get_llm_client, get_model_name, resolve_provider
 
 logger = logging.getLogger(__name__)
 
@@ -89,11 +90,17 @@ def _compute_suggested_actions(app_state: AppStateSnapshot) -> list[SuggestedAct
     return suggestions[:4]
 
 
+def get_chat_provider_settings() -> ChatProvidersResponse:
+    return get_chat_providers()
+
+
 async def process_chat(request: ChatRequest) -> ChatResponse:
-    client = get_llm_client()
-    model = get_model_name()
+    provider = resolve_provider(request.provider)
+    client = get_llm_client(provider)
+    model = get_model_name(provider)
     tools = get_tool_definitions()
     app_state = request.app_state
+    logger.info("Processing chat with provider=%s model=%s", provider, model)
 
     # Build message list
     messages: list[dict] = [

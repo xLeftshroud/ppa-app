@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+export type ChatProviderId = "openai" | "ollama";
+
 export interface ChatMessage {
   id: string;
   role: "user" | "assistant" | "system";
@@ -23,6 +25,7 @@ interface ChatState {
   isOpen: boolean;
   isLoading: boolean;
   suggestedActions: SuggestedAction[];
+  selectedProvider: ChatProviderId | null;
 
   toggleOpen: () => void;
   setOpen: (open: boolean) => void;
@@ -31,6 +34,7 @@ interface ChatState {
   addSystemError: (content: string) => void;
   setLoading: (loading: boolean) => void;
   setSuggestedActions: (actions: SuggestedAction[]) => void;
+  setSelectedProvider: (provider: ChatProviderId | null) => void;
   clearHistory: () => void;
 }
 
@@ -44,6 +48,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   isOpen: false,
   isLoading: false,
   suggestedActions: [],
+  selectedProvider: null,
 
   toggleOpen: () => set((s) => ({ isOpen: !s.isOpen })),
   setOpen: (open) => set({ isOpen: open }),
@@ -78,6 +83,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   setLoading: (loading) => set({ isLoading: loading }),
 
   setSuggestedActions: (actions) => set({ suggestedActions: actions }),
+  setSelectedProvider: (provider) => set({ selectedProvider: provider }),
 
   clearHistory: () => set({ messages: [], suggestedActions: [] }),
 }));
