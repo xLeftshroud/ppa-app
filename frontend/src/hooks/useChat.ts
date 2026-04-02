@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useChatStore } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
-import { sendChatMessage, type AppStateSnapshot } from "@/api/chat";
+import { fetchChatProviders, sendChatMessage, type AppStateSnapshot } from "@/api/chat";
 import { applyUIAction } from "./useChatActions";
 
 function buildSnapshot(): AppStateSnapshot {
@@ -43,29 +44,71 @@ export function useChat(runSimulation?: () => void) {
     addSystemError,
     setLoading,
     setSuggestedActions,
+    selectedProvider,
+    setSelectedProvider,
     clearHistory,
   } = useChatStore();
+
+  const providersQuery = useQuery({
+    queryKey: ["chatProviders"],
+    queryFn: fetchChatProviders,
+    staleTime: Infinity,
+  });
+
+  const providerOptions = providersQuery.data?.providers ?? [];
+  const enabledProviders = providerOptions.filter((provider) => provider.enabled);
+
+  useEffect(() => {
+    if (!providersQuery.data) return;
+
+    if (enabledProviders.length === 0) {
+      if (selectedProvider !== null) {
+        setSelectedProvider(null);
+      }
+      return;
+    }
+
+    const currentIsEnabled = selectedProvider != null && enabledProviders.some((provider) => provider.id === selectedProvider);
+    if (currentIsEnabled) return;
+
+    const fallbackProvider =
+      providersQuery.data.default_provider && enabledProviders.some((provider) => provider.id === providersQuery.data.default_provider)
+        ? providersQuery.data.default_provider
+        : enabledProviders[0].id;
+
+    if (fallbackProvider !== selectedProvider) {
+      setSelectedProvider(fallbackProvider);
+    }
+  }, [enabledProviders, providersQuery.data, selectedProvider, setSelectedProvider]);
+
+  const activeProvider =
+    (selectedProvider && enabledProviders.find((provider) => provider.id === selectedProvider)) ??
+    null;
+  const canSwitchProviders = enabledProviders.length === 2;
+  const isChatAvailable = enabledProviders.length > 0 || !providersQuery.data;
 
   const sendMessage = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed) return;
+      if (!trimmed || !isChatAvailable) return;
 
-      addUserMessage(trimmed);
-      setLoading(true);
-
-      const snapshot = buildSnapshot();
       const history = useChatStore
         .getState()
         .messages.filter((m) => m.role !== "system")
         .slice(-20)
         .map((m) => ({ role: m.role, content: m.content }));
 
+      addUserMessage(trimmed);
+      setLoading(true);
+
+      const snapshot = buildSnapshot();
+
       try {
         const response = await sendChatMessage({
           message: trimmed,
           conversation_history: history,
           app_state: snapshot,
+          provider: selectedProvider,
         });
 
         // Apply UI actions
@@ -94,7 +137,7 @@ export function useChat(runSimulation?: () => void) {
         setLoading(false);
       }
     },
-    [addUserMessage, setLoading, addAssistantMessage, addSystemError, setSuggestedActions, runSimulation],
+    [addUserMessage, isChatAvailable, selectedProvider, setLoading, addAssistantMessage, addSystemError, setSuggestedActions, runSimulation],
   );
 
   return {
@@ -102,6 +145,12 @@ export function useChat(runSimulation?: () => void) {
     isOpen,
     isLoading,
     suggestedActions,
+    selectedProvider,
+    setSelectedProvider,
+    activeProvider,
+    canSwitchProviders,
+    isChatAvailable,
+    areProvidersLoaded: !!providersQuery.data,
     toggleOpen,
     setOpen,
     sendMessage,

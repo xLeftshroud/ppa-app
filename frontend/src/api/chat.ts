@@ -1,5 +1,5 @@
 import { apiFetch } from "./client";
-import type { UIAction, SuggestedAction } from "@/store/useChatStore";
+import type { ChatProviderId, UIAction, SuggestedAction } from "@/store/useChatStore";
 
 export interface AppStateSnapshot {
   dataset_id: string | null;
@@ -28,12 +28,29 @@ export interface ChatApiRequest {
   message: string;
   conversation_history: { role: string; content: string }[];
   app_state: AppStateSnapshot;
+  provider?: ChatProviderId | null;
 }
 
 export interface ChatApiResponse {
   assistant_message: string;
   ui_actions: UIAction[];
   suggested_actions: SuggestedAction[];
+}
+
+export interface ChatProviderConfig {
+  id: ChatProviderId;
+  label: string;
+  enabled: boolean;
+  model: string | null;
+}
+
+export interface ChatProvidersResponse {
+  default_provider: ChatProviderId | null;
+  providers: ChatProviderConfig[];
+}
+
+export function fetchChatProviders(): Promise<ChatProvidersResponse> {
+  return apiFetch<ChatProvidersResponse>("/v1/chat/providers");
 }
 
 export function sendChatMessage(body: ChatApiRequest): Promise<ChatApiResponse> {

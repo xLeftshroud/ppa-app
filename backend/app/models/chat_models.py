@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+ChatProviderId = Literal["openai", "ollama"]
+
 
 class AppStateSnapshot(BaseModel):
     dataset_id: str | None = None
@@ -35,13 +37,14 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
-    conversation_history: list[ChatMessage] = []
-    app_state: AppStateSnapshot = AppStateSnapshot()
+    conversation_history: list[ChatMessage] = Field(default_factory=list)
+    app_state: AppStateSnapshot = Field(default_factory=AppStateSnapshot)
+    provider: ChatProviderId | None = None
 
 
 class UIAction(BaseModel):
     action: str
-    params: dict = {}
+    params: dict = Field(default_factory=dict)
 
 
 class SuggestedAction(BaseModel):
@@ -49,7 +52,19 @@ class SuggestedAction(BaseModel):
     message: str
 
 
+class ChatProviderInfo(BaseModel):
+    id: ChatProviderId
+    label: str
+    enabled: bool
+    model: str | None = None
+
+
+class ChatProvidersResponse(BaseModel):
+    default_provider: ChatProviderId | None = None
+    providers: list[ChatProviderInfo] = Field(default_factory=list)
+
+
 class ChatResponse(BaseModel):
     assistant_message: str
-    ui_actions: list[UIAction] = []
-    suggested_actions: list[SuggestedAction] = []
+    ui_actions: list[UIAction] = Field(default_factory=list)
+    suggested_actions: list[SuggestedAction] = Field(default_factory=list)

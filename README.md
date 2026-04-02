@@ -48,6 +48,12 @@ The backend reads settings from `backend/.env` (see `backend/.env.example` for a
 | `CORS_ORIGINS` | `http://localhost:5173,...` | Comma-separated allowed CORS origins |
 | `MAX_UPLOAD_SIZE_MB` | `50` | Maximum CSV upload size in MB |
 | `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `LLM_PROVIDER` | `openai` | Default chat provider (`openai` or `ollama`) |
+| `OPENAI_API_KEY` | `` | OpenAI API key for chat |
+| `OPENAI_MODEL` | `gpt-4o-mini` | OpenAI model used when provider is `openai` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | Ollama OpenAI-compatible base URL |
+| `OLLAMA_MODEL` | `` | Local Ollama model name for chat |
+| `OLLAMA_API_KEY` | `ollama` | API key passed to Ollama's OpenAI-compatible endpoint |
 
 Copy `.env.example` to `.env` and customize:
 
@@ -56,6 +62,11 @@ cd backend
 cp .env.example .env
 # Edit .env as needed
 ```
+
+For local Ollama:
+
+- If the backend runs directly on your machine, `OLLAMA_BASE_URL=http://localhost:11434/v1` is the normal setting.
+- If the backend runs in Docker while Ollama runs on the host machine, use `OLLAMA_BASE_URL=http://host.docker.internal:11434/v1`.
 
 ## Replacing the DummyPipeline with a Real Model
 
@@ -107,5 +118,7 @@ Upload CSV files with these required columns (no missing values):
 | POST | `/v1/catalog/sku-lookup` | Reverse-lookup SKU by attributes |
 | GET | `/v1/baseline?dataset_id=&product_sku_code=&customer=` | Get baseline price/volume |
 | POST | `/v1/simulate` | Run simulation (curve + elasticity) |
+| GET | `/v1/chat/providers` | Get enabled chat providers and default selection |
+| POST | `/v1/chat` | Send a chat message using the selected provider |
 | GET | `/v1/skus` | List SKU codes from training data |
 | GET | `/v1/skus/{sku}/price-range` | Per-SKU price quantiles (p1/p5/p50/p95/p99) |
