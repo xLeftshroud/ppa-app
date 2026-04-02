@@ -22,6 +22,9 @@ import { Button } from "@/components/ui/button";
 import { ApiError } from "@/api/client";
 import { toast } from "@/hooks/useToast";
 import { useEffect, useMemo } from "react";
+import { ChatPanel } from "@/components/chat/ChatPanel";
+import { ChatToggleButton } from "@/components/chat/ChatToggleButton";
+import { useChat } from "@/hooks/useChat";
 
 export function HomePage() {
   const datasetId = useAppStore((s) => s.datasetId);
@@ -38,6 +41,7 @@ export function HomePage() {
   const setAttrUnitsPkg = useAppStore((s) => s.setAttrUnitsPkg);
   const clearSkuAttrs = useAppStore((s) => s.clearSkuAttrs);
   const { isLoading, isFetching, error, canSimulate, runNow } = useSimulate();
+  const chat = useChat(runNow);
   const { data: priceRange } = usePriceRange(selectedSku);
   const { data: brands = [] } = useBrands(datasetId);
   const { data: flavors = [] } = useFlavors(datasetId);
@@ -69,6 +73,7 @@ export function HomePage() {
   }, [error]);
 
   return (
+    <>
     <div className="flex flex-col lg:flex-row gap-6 p-6 max-w-[1600px] mx-auto">
       {/* Left Panel — Inputs */}
       <div className="w-full lg:w-[380px] shrink-0 space-y-5">
@@ -131,5 +136,8 @@ export function HomePage() {
         </div>
       </div>
     </div>
+    <ChatPanel chat={chat} />
+    {!chat.isOpen && <ChatToggleButton onClick={chat.toggleOpen} />}
+    </>
   );
 }
