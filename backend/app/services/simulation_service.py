@@ -20,6 +20,8 @@ from app.utils.feature_builder import build_feature_df
 
 logger = logging.getLogger(__name__)
 
+CURVE_PRICE_STEP = 0.001
+
 _ATTR_FIELDS = [
     "product_sku_code", "top_brand", "flavor_internal",
     "pack_type_internal", "pack_size_internal", "units_per_package_internal",
@@ -91,7 +93,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     all_prices: list[float] = []
 
     if baseline_price is not None:
-        p_start = 0.001  # −100% clamps to 0; minimum valid price at 3dp
+        p_start = CURVE_PRICE_STEP  # −100% clamps to 0; minimum valid price at 3dp
         p_end = round(baseline_price * 2.0, 3)
     else:
         price_meta = metadata.get("price_per_litre", {})
@@ -101,7 +103,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     p = p_start
     while p <= p_end:
         all_prices.append(p)
-        p = round(p + 0.001, 3)
+        p = round(p + CURVE_PRICE_STEP, 3)
 
     all_prices_sorted = all_prices
 

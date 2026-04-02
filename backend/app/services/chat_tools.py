@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 from app.models.chat_models import AppStateSnapshot, ChatCustomPlotSummary, UIAction
-from app.models.request_models import SimulateRequest
+from app.models.request_models import SimulateRequest, VALID_CUSTOMERS
 from app.services.baseline_service import get_baseline
 from app.services.catalog_service import (
     get_distinct_brands,
@@ -24,7 +24,7 @@ from app.utils.error_handler import AppError, BaselineNotFound
 
 logger = logging.getLogger(__name__)
 
-VALID_CUSTOMERS = ["L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"]
+
 CUSTOM_PLOT_COLUMNS = [
     "product_sku_code",
     "customer",
