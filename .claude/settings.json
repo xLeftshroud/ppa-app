@@ -9,6 +9,8 @@
       "Bash(git status *)",
       "Bash(git diff *)",
       "Bash(git log *)",
+      "Bash(git diff HEAD --name-status)",
+      "Bash(git status --short)",
       "Bash(grep -E \"\\\\.\\(ts|tsx|py\\)$\")"
     ]
   }

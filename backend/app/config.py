@@ -11,6 +11,16 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 50
     log_level: str = "INFO"
 
+    # Chat LLM Configuration
+    llm_provider: str = "openai"  # default provider: "openai" or "ollama"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    ollama_base_url: str = "http://localhost:11434/v1"
+    ollama_model: str = ""
+    ollama_api_key: str = "ollama"
+    chat_max_history: int = 20
+    chat_max_tool_rounds: int = 8
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 

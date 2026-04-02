@@ -9,3 +9,4 @@ pydantic
 pydantic-settings
 python-dotenv
 xgboost
+openai>=1.0.0
