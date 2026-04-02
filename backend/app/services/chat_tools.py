@@ -1,0 +1,510 @@
+from __future__ import annotations
+
+import json
+import logging
+from typing import Any
+
+from app.models.chat_models import AppStateSnapshot, UIAction
+from app.models.request_models import SimulateRequest
+from app.services.baseline_service import get_baseline
+from app.services.catalog_service import (
+    get_distinct_brands,
+    get_distinct_flavors,
+    get_distinct_pack_types,
+    get_sku_attributes,
+    get_sku_catalog,
+)
+from app.services.dataset_service import get_dataset
+from app.services.optimization_service import optimize_revenue
+from app.services.pipeline_service import get_metadata
+from app.services.price_range_service import get_price_range
+from app.services.simulation_service import run_simulation
+from app.utils.error_handler import AppError, BaselineNotFound
+
+logger = logging.getLogger(__name__)
+
+VALID_CUSTOMERS = ["L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"]
+
+# ---------------------------------------------------------------------------
+# Tool definitions (OpenAI function-calling schema)
+# ---------------------------------------------------------------------------
+
+TOOL_DEFINITIONS: list[dict] = [
+    # ── Data tools (executed server-side) ──
+    {
+        "type": "function",
+        "function": {
+            "name": "get_baseline",
+            "description": "Get the historical baseline price and volume for a SKU at a specific customer. Returns the most recent data point (yearweek, price_per_litre, volume_units).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_sku_code": {"type": "integer", "description": "The SKU code"},
+                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                },
+                "required": ["product_sku_code", "customer"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "run_simulation",
+            "description": "Run a price-volume simulation. Returns baseline, predicted volume at the selected price, volume change, elasticity, and the full demand curve. You MUST provide at least one price input (selected_new_price_per_litre or selected_price_change_pct) to get a selected-point result with elasticity.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_sku_code": {"type": "integer"},
+                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                    "promotion_indicator": {"type": "integer", "enum": [0, 1]},
+                    "week": {"type": "integer", "minimum": 1, "maximum": 52},
+                    "top_brand": {"type": "string"},
+                    "flavor_internal": {"type": "string"},
+                    "pack_type_internal": {"type": "string"},
+                    "pack_size_internal": {"type": "integer"},
+                    "units_per_package_internal": {"type": "integer"},
+                    "baseline_override_price_per_litre": {"type": "number", "minimum": 0.01},
+                    "selected_price_change_pct": {"type": "number", "minimum": -100, "maximum": 100},
+                    "selected_new_price_per_litre": {"type": "number", "minimum": 0.01},
+                },
+                "required": ["customer", "promotion_indicator", "week"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_price_range",
+            "description": "Get the historical price distribution (percentiles p1, p5, p50, p95, p99) and sample size for a SKU from training data. Use this to check if a price is within the historical range.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_sku_code": {"type": "integer"},
+                },
+                "required": ["product_sku_code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_skus",
+            "description": "List all available SKUs in the uploaded dataset with their attributes (brand, flavor, pack type, pack size, units per package). Returns up to 50 SKUs. Use this when the user asks what SKUs are available or wants to find a specific product.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_customers",
+            "description": "List all valid customer names.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_brands",
+            "description": "List all distinct brand names in the uploaded dataset.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "compare_scenarios",
+            "description": "Compare two simulation scenarios side by side. Returns baseline, predicted volume, elasticity, and revenue for both, plus the difference. Use this for comparisons between SKUs, customers, promo on/off, etc.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "scenario_a": {
+                        "type": "object",
+                        "description": "First scenario configuration",
+                        "properties": {
+                            "label": {"type": "string", "description": "Human-readable label"},
+                            "product_sku_code": {"type": "integer"},
+                            "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                            "promotion_indicator": {"type": "integer", "enum": [0, 1]},
+                            "week": {"type": "integer", "minimum": 1, "maximum": 52},
+                            "top_brand": {"type": "string"},
+                            "flavor_internal": {"type": "string"},
+                            "pack_type_internal": {"type": "string"},
+                            "pack_size_internal": {"type": "integer"},
+                            "units_per_package_internal": {"type": "integer"},
+                            "baseline_override_price_per_litre": {"type": "number"},
+                            "selected_price_change_pct": {"type": "number"},
+                            "selected_new_price_per_litre": {"type": "number"},
+                        },
+                        "required": ["customer", "promotion_indicator", "week"],
+                    },
+                    "scenario_b": {
+                        "type": "object",
+                        "description": "Second scenario configuration",
+                        "properties": {
+                            "label": {"type": "string", "description": "Human-readable label"},
+                            "product_sku_code": {"type": "integer"},
+                            "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                            "promotion_indicator": {"type": "integer", "enum": [0, 1]},
+                            "week": {"type": "integer", "minimum": 1, "maximum": 52},
+                            "top_brand": {"type": "string"},
+                            "flavor_internal": {"type": "string"},
+                            "pack_type_internal": {"type": "string"},
+                            "pack_size_internal": {"type": "integer"},
+                            "units_per_package_internal": {"type": "integer"},
+                            "baseline_override_price_per_litre": {"type": "number"},
+                            "selected_price_change_pct": {"type": "number"},
+                            "selected_new_price_per_litre": {"type": "number"},
+                        },
+                        "required": ["customer", "promotion_indicator", "week"],
+                    },
+                },
+                "required": ["scenario_a", "scenario_b"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "optimize_revenue",
+            "description": "Find the price that maximizes revenue (price x volume) for the given configuration. Scans the full demand curve. Returns optimal price, volume, revenue, and comparison to baseline revenue.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_sku_code": {"type": "integer"},
+                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                    "promotion_indicator": {"type": "integer", "enum": [0, 1]},
+                    "week": {"type": "integer", "minimum": 1, "maximum": 52},
+                    "top_brand": {"type": "string"},
+                    "flavor_internal": {"type": "string"},
+                    "pack_type_internal": {"type": "string"},
+                    "pack_size_internal": {"type": "integer"},
+                    "units_per_package_internal": {"type": "integer"},
+                    "baseline_override_price_per_litre": {"type": "number"},
+                },
+                "required": ["customer", "promotion_indicator", "week"],
+            },
+        },
+    },
+    # ── UI tools (produce action descriptors for frontend) ──
+    {
+        "type": "function",
+        "function": {
+            "name": "set_sku",
+            "description": "Set the selected SKU in the UI controls. This also populates brand, flavor, pack type, and other attributes from the SKU catalog.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_sku_code": {"type": "integer"},
+                },
+                "required": ["product_sku_code"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_customer",
+            "description": "Set the customer selection in the UI.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                },
+                "required": ["customer"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_simulation_params",
+            "description": "Set one or more simulation parameters in the UI. Only include fields you want to change.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "promotion_indicator": {"type": "integer", "enum": [0, 1]},
+                    "week": {"type": "integer", "minimum": 1, "maximum": 52},
+                    "baseline_override_price_per_litre": {"type": "number", "minimum": 0.01},
+                    "price_change_pct": {"type": "number", "minimum": -100, "maximum": 100},
+                    "new_price_per_litre": {"type": "number", "minimum": 0.01},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_sku_attributes",
+            "description": "Set SKU attributes (brand, flavor, pack type, pack size, units per package) in the UI without selecting a specific SKU code.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "brand": {"type": "string"},
+                    "flavor": {"type": "string"},
+                    "pack_type": {"type": "string"},
+                    "pack_size": {"type": "integer"},
+                    "units_pkg": {"type": "integer"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "clear_selections",
+            "description": "Clear all SKU and attribute selections in the UI, resetting to blank state.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "trigger_simulation",
+            "description": "Trigger the Run Simulation button in the UI using the currently configured parameters. Call this after setting parameters if you want the main UI panel to update with new results.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "add_custom_plot",
+            "description": "Add a scatter plot overlay to the demand curve chart, showing historical data points filtered by the specified columns.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "title": {"type": "string"},
+                    "columns": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "enum": [
+                                "product_sku_code", "customer", "top_brand",
+                                "flavor_internal", "pack_type_internal",
+                                "pack_size_internal", "units_per_package_internal",
+                                "promotion_indicator",
+                            ],
+                        },
+                    },
+                },
+                "required": ["title", "columns"],
+            },
+        },
+    },
+]
+
+
+def get_tool_definitions() -> list[dict]:
+    return TOOL_DEFINITIONS
+
+
+# ---------------------------------------------------------------------------
+# Tool execution
+# ---------------------------------------------------------------------------
+
+def _build_sim_request(
+    args: dict,
+    app_state: AppStateSnapshot,
+    virtual_state: dict,
+) -> SimulateRequest:
+    """Build a SimulateRequest merging tool args with current app/virtual state."""
+    dataset_id = app_state.dataset_id
+    if not dataset_id:
+        raise ValueError("No dataset uploaded. Please upload a CSV first.")
+
+    # Merge: tool args > virtual state > app state
+    def _resolve(key: str, app_val: Any) -> Any:
+        if key in args and args[key] is not None:
+            return args[key]
+        if key in virtual_state and virtual_state[key] is not None:
+            return virtual_state[key]
+        return app_val
+
+    return SimulateRequest(
+        dataset_id=dataset_id,
+        product_sku_code=_resolve("product_sku_code", app_state.selected_sku),
+        customer=_resolve("customer", app_state.customer),
+        promotion_indicator=_resolve("promotion_indicator", app_state.promotion),
+        week=_resolve("week", app_state.week),
+        top_brand=_resolve("top_brand", app_state.brand),
+        flavor_internal=_resolve("flavor_internal", app_state.flavor),
+        pack_type_internal=_resolve("pack_type_internal", app_state.pack_type),
+        pack_size_internal=_resolve("pack_size_internal", app_state.pack_size),
+        units_per_package_internal=_resolve("units_per_package_internal", app_state.units_pkg),
+        baseline_override_price_per_litre=args.get("baseline_override_price_per_litre", app_state.baseline_override),
+        selected_price_change_pct=args.get("selected_price_change_pct"),
+        selected_new_price_per_litre=args.get("selected_new_price_per_litre"),
+    )
+
+
+def execute_tool(
+    tool_name: str,
+    tool_args: dict,
+    app_state: AppStateSnapshot,
+    virtual_state: dict,
+) -> tuple[str, list[UIAction]]:
+    """Execute a tool and return (result_json_string, ui_actions_list)."""
+    ui_actions: list[UIAction] = []
+
+    try:
+        if tool_name == "get_baseline":
+            dataset_id = app_state.dataset_id
+            if not dataset_id:
+                return json.dumps({"error": "No dataset uploaded."}), ui_actions
+            df = get_dataset(dataset_id)
+            result = get_baseline(df, tool_args["product_sku_code"], tool_args["customer"])
+            return json.dumps(result), ui_actions
+
+        elif tool_name == "run_simulation":
+            req = _build_sim_request(tool_args, app_state, virtual_state)
+            resp = run_simulation(req)
+            # Return a compact summary (not the full curve)
+            summary: dict[str, Any] = {
+                "model": resp.model_info.model_name,
+                "warnings": resp.warnings,
+            }
+            if resp.baseline:
+                summary["baseline"] = {
+                    "price_per_litre": resp.baseline.price_per_litre,
+                    "volume_units": resp.baseline.volume_units,
+                    "yearweek": resp.baseline.yearweek,
+                }
+            if resp.selected:
+                summary["selected"] = {
+                    "new_price_per_litre": resp.selected.new_price_per_litre,
+                    "predicted_volume_units": resp.selected.predicted_volume_units,
+                    "delta_volume_units": resp.selected.delta_volume_units,
+                    "delta_volume_pct": resp.selected.delta_volume_pct,
+                    "elasticity": resp.selected.elasticity,
+                    "price_change_pct": resp.selected.price_change_pct,
+                }
+            summary["curve_points_count"] = len(resp.curve)
+            return json.dumps(summary), ui_actions
+
+        elif tool_name == "get_price_range":
+            result = get_price_range(tool_args["product_sku_code"])
+            if result is None:
+                return json.dumps({"error": f"No price range data for SKU {tool_args['product_sku_code']}"}), ui_actions
+            return json.dumps(result), ui_actions
+
+        elif tool_name == "list_skus":
+            dataset_id = app_state.dataset_id
+            if not dataset_id:
+                return json.dumps({"error": "No dataset uploaded."}), ui_actions
+            df = get_dataset(dataset_id)
+            skus = get_sku_catalog(df)
+            # Cap at 50 to keep token usage reasonable
+            return json.dumps({"skus": skus[:50], "total": len(skus)}), ui_actions
+
+        elif tool_name == "list_customers":
+            return json.dumps({"customers": VALID_CUSTOMERS}), ui_actions
+
+        elif tool_name == "list_brands":
+            dataset_id = app_state.dataset_id
+            if not dataset_id:
+                return json.dumps({"error": "No dataset uploaded."}), ui_actions
+            df = get_dataset(dataset_id)
+            brands = get_distinct_brands(df)
+            return json.dumps({"brands": brands}), ui_actions
+
+        elif tool_name == "compare_scenarios":
+            results = {}
+            for key in ("scenario_a", "scenario_b"):
+                scenario = tool_args[key]
+                label = scenario.pop("label", key)
+                req = _build_sim_request(scenario, app_state, virtual_state)
+                resp = run_simulation(req)
+                s: dict[str, Any] = {"label": label, "warnings": resp.warnings}
+                if resp.baseline:
+                    s["baseline_price"] = resp.baseline.price_per_litre
+                    s["baseline_volume"] = resp.baseline.volume_units
+                    s["baseline_revenue"] = round(resp.baseline.price_per_litre * resp.baseline.volume_units, 2)
+                if resp.selected:
+                    s["new_price"] = resp.selected.new_price_per_litre
+                    s["predicted_volume"] = resp.selected.predicted_volume_units
+                    s["delta_volume_units"] = resp.selected.delta_volume_units
+                    s["delta_volume_pct"] = resp.selected.delta_volume_pct
+                    s["elasticity"] = resp.selected.elasticity
+                    s["revenue"] = round(resp.selected.new_price_per_litre * resp.selected.predicted_volume_units, 2)
+                results[key] = s
+            return json.dumps(results), ui_actions
+
+        elif tool_name == "optimize_revenue":
+            req = _build_sim_request(tool_args, app_state, virtual_state)
+            result = optimize_revenue(req)
+            return json.dumps(result), ui_actions
+
+        # ── UI tools ──
+
+        elif tool_name == "set_sku":
+            sku_code = tool_args["product_sku_code"]
+            dataset_id = app_state.dataset_id
+            attrs = None
+            if dataset_id:
+                df = get_dataset(dataset_id)
+                attrs = get_sku_attributes(df, sku_code)
+            ui_actions.append(UIAction(action="set_sku", params={"sku": sku_code, "attrs": attrs}))
+            virtual_state["product_sku_code"] = sku_code
+            if attrs:
+                virtual_state["top_brand"] = attrs.get("top_brand")
+                virtual_state["flavor_internal"] = attrs.get("flavor_internal")
+                virtual_state["pack_type_internal"] = attrs.get("pack_type_internal")
+                virtual_state["pack_size_internal"] = attrs.get("pack_size_internal")
+                virtual_state["units_per_package_internal"] = attrs.get("units_per_package_internal")
+            return json.dumps({"ok": True, "sku": sku_code, "attrs": attrs}), ui_actions
+
+        elif tool_name == "set_customer":
+            customer = tool_args["customer"]
+            ui_actions.append(UIAction(action="set_customer", params={"customer": customer}))
+            virtual_state["customer"] = customer
+            return json.dumps({"ok": True, "customer": customer}), ui_actions
+
+        elif tool_name == "set_simulation_params":
+            params = {}
+            if "promotion_indicator" in tool_args:
+                params["promotion"] = tool_args["promotion_indicator"]
+                virtual_state["promotion_indicator"] = tool_args["promotion_indicator"]
+            if "week" in tool_args:
+                params["week"] = tool_args["week"]
+                virtual_state["week"] = tool_args["week"]
+            if "baseline_override_price_per_litre" in tool_args:
+                params["baseline_override"] = tool_args["baseline_override_price_per_litre"]
+            if "price_change_pct" in tool_args:
+                params["price_change_pct"] = tool_args["price_change_pct"]
+            if "new_price_per_litre" in tool_args:
+                params["new_price"] = tool_args["new_price_per_litre"]
+            ui_actions.append(UIAction(action="set_simulation_params", params=params))
+            return json.dumps({"ok": True, "params_set": list(params.keys())}), ui_actions
+
+        elif tool_name == "set_sku_attributes":
+            params = {}
+            for k in ("brand", "flavor", "pack_type", "pack_size", "units_pkg"):
+                if k in tool_args:
+                    params[k] = tool_args[k]
+            ui_actions.append(UIAction(action="set_sku_attributes", params=params))
+            return json.dumps({"ok": True, "attrs_set": list(params.keys())}), ui_actions
+
+        elif tool_name == "clear_selections":
+            ui_actions.append(UIAction(action="clear_selections", params={}))
+            return json.dumps({"ok": True}), ui_actions
+
+        elif tool_name == "trigger_simulation":
+            ui_actions.append(UIAction(action="trigger_simulation", params={}))
+            return json.dumps({"ok": True}), ui_actions
+
+        elif tool_name == "add_custom_plot":
+            ui_actions.append(UIAction(
+                action="add_custom_plot",
+                params={"title": tool_args["title"], "columns": tool_args["columns"]},
+            ))
+            return json.dumps({"ok": True, "title": tool_args["title"]}), ui_actions
+
+        else:
+            return json.dumps({"error": f"Unknown tool: {tool_name}"}), ui_actions
+
+    except BaselineNotFound as e:
+        return json.dumps({"error": str(e)}), ui_actions
+    except AppError as e:
+        return json.dumps({"error": f"{e.code}: {e.message}"}), ui_actions
+    except Exception as e:
+        logger.exception("Tool execution error: %s", tool_name)
+        return json.dumps({"error": f"Tool execution failed: {str(e)}"}), ui_actions

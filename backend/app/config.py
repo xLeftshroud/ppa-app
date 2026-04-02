@@ -11,6 +11,16 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = 50
     log_level: str = "INFO"
 
+    # LLM Configuration
+    llm_provider: str = "openai"  # "openai" or "azure"
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    azure_openai_api_key: str = ""
+    azure_openai_endpoint: str = ""
+    azure_openai_deployment: str = ""
+    chat_max_history: int = 20
+    chat_max_tool_rounds: int = 8
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
