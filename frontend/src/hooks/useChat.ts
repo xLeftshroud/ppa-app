@@ -28,6 +28,13 @@ function buildSnapshot(): AppStateSnapshot {
     last_predicted_volume: s.simulateResult?.selected?.predicted_volume_units ?? null,
     last_elasticity: s.simulateResult?.selected?.elasticity ?? null,
     last_delta_volume_pct: s.simulateResult?.selected?.delta_volume_pct ?? null,
+    custom_plots: s.customPlots.map((plot) => ({
+      id: plot.id,
+      title: plot.title,
+      color: plot.color,
+      is_visible: plot.isVisible,
+      columns: [...plot.columns],
+    })),
   };
 }
 

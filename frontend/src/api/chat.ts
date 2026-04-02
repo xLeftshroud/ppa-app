@@ -1,6 +1,14 @@
 import { apiFetch } from "./client";
 import type { ChatProviderId, UIAction, SuggestedAction } from "@/store/useChatStore";
 
+export interface ChatCustomPlotSummary {
+  id: string;
+  title: string;
+  color: string;
+  is_visible: boolean;
+  columns: string[];
+}
+
 export interface AppStateSnapshot {
   dataset_id: string | null;
   selected_sku: number | null;
@@ -22,6 +30,7 @@ export interface AppStateSnapshot {
   last_predicted_volume: number | null;
   last_elasticity: number | null;
   last_delta_volume_pct: number | null;
+  custom_plots: ChatCustomPlotSummary[];
 }
 
 export interface ChatApiRequest {

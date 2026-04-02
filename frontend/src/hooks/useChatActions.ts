@@ -3,12 +3,6 @@ import { useAppStore } from "@/store/useAppStore";
 import type { SkuItem } from "@/types/api";
 import type { CustomPlot } from "@/store/useAppStore";
 
-const PLOT_COLORS = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e",
-  "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
-];
-let plotCounter = 0;
-
 export function applyUIAction(action: UIAction) {
   const store = useAppStore.getState();
 
@@ -45,15 +39,69 @@ export function applyUIAction(action: UIAction) {
       break;
     }
     case "add_custom_plot": {
-      const { title, columns } = action.params as { title: string; columns: string[] };
-      const plot: CustomPlot = {
-        id: `chat-plot-${Date.now()}-${++plotCounter}`,
+      const {
+        id,
+        plot_id,
         title,
-        color: PLOT_COLORS[plotCounter % PLOT_COLORS.length],
-        isVisible: true,
+        columns,
+        color,
+        is_visible,
+      } = action.params as {
+        id?: string;
+        plot_id?: string;
+        title: string;
+        columns: string[];
+        color: string;
+        is_visible?: boolean;
+      };
+      const resolvedId = plot_id ?? id;
+      if (!resolvedId) {
+        console.warn("Missing plot id for add_custom_plot action");
+        break;
+      }
+      const plot: CustomPlot = {
+        id: resolvedId,
+        title,
+        color,
+        isVisible: is_visible ?? true,
         columns,
       };
-      store.addCustomPlot(plot);
+      if (store.customPlots.some((existingPlot) => existingPlot.id === resolvedId)) {
+        store.updateCustomPlot(resolvedId, plot);
+      } else {
+        store.addCustomPlot(plot);
+      }
+      break;
+    }
+    case "update_custom_plot": {
+      const {
+        plot_id,
+        title,
+        columns,
+        color,
+        is_visible,
+      } = action.params as {
+        plot_id: string;
+        title?: string;
+        columns?: string[];
+        color?: string;
+        is_visible?: boolean;
+      };
+      const patch: Partial<CustomPlot> = {};
+      if (title !== undefined) patch.title = title;
+      if (columns !== undefined) patch.columns = columns;
+      if (color !== undefined) patch.color = color;
+      if (is_visible !== undefined) patch.isVisible = is_visible;
+      store.updateCustomPlot(plot_id, patch);
+      break;
+    }
+    case "remove_custom_plot": {
+      const { plot_id } = action.params as { plot_id: string };
+      store.removeCustomPlot(plot_id);
+      break;
+    }
+    case "clear_custom_plots": {
+      store.clearCustomPlots();
       break;
     }
     // trigger_simulation is handled by useChat hook directly
