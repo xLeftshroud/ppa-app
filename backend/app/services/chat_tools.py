@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
+import uuid
 from typing import Any
 
-from app.models.chat_models import AppStateSnapshot, UIAction
+from app.models.chat_models import AppStateSnapshot, ChatCustomPlotSummary, UIAction
 from app.models.request_models import SimulateRequest
 from app.services.baseline_service import get_baseline
 from app.services.catalog_service import (
@@ -16,7 +18,6 @@ from app.services.catalog_service import (
 )
 from app.services.dataset_service import get_dataset
 from app.services.optimization_service import optimize_revenue
-from app.services.pipeline_service import get_metadata
 from app.services.price_range_service import get_price_range
 from app.services.simulation_service import run_simulation
 from app.utils.error_handler import AppError, BaselineNotFound
@@ -24,6 +25,27 @@ from app.utils.error_handler import AppError, BaselineNotFound
 logger = logging.getLogger(__name__)
 
 VALID_CUSTOMERS = ["L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"]
+CUSTOM_PLOT_COLUMNS = [
+    "product_sku_code",
+    "customer",
+    "top_brand",
+    "flavor_internal",
+    "pack_type_internal",
+    "pack_size_internal",
+    "units_per_package_internal",
+    "promotion_indicator",
+]
+CUSTOM_PLOT_COLOR_PALETTE = [
+    "#ef4444",
+    "#f97316",
+    "#eab308",
+    "#22c55e",
+    "#06b6d4",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
+]
+HEX_COLOR_PATTERN = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 # ---------------------------------------------------------------------------
 # Tool definitions (OpenAI function-calling schema)
@@ -106,6 +128,14 @@ TOOL_DEFINITIONS: list[dict] = [
         "function": {
             "name": "list_brands",
             "description": "List all distinct brand names in the uploaded dataset.",
+            "parameters": {"type": "object", "properties": {}},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_custom_plots",
+            "description": "List all custom plot overlays currently configured in the app. Returns plot_id, title, color, visibility, and filter columns.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -273,21 +303,71 @@ TOOL_DEFINITIONS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "title": {"type": "string"},
+                    "plot_id": {
+                        "type": "string",
+                        "description": "Optional plot identifier. Omit to auto-generate a new plot_id.",
+                    },
                     "columns": {
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": [
-                                "product_sku_code", "customer", "top_brand",
-                                "flavor_internal", "pack_type_internal",
-                                "pack_size_internal", "units_per_package_internal",
-                                "promotion_indicator",
-                            ],
+                            "enum": CUSTOM_PLOT_COLUMNS,
                         },
+                    },
+                    "color": {
+                        "type": "string",
+                        "description": "Optional hex color like #EF4444.",
+                    },
+                    "is_visible": {
+                        "type": "boolean",
+                        "description": "Optional visibility flag. Defaults to true.",
                     },
                 },
                 "required": ["title", "columns"],
             },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "update_custom_plot",
+            "description": "Update an existing custom plot by plot_id. Use this to change the title, filter columns, color, or visibility.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plot_id": {"type": "string"},
+                    "title": {"type": "string"},
+                    "columns": {
+                        "type": "array",
+                        "items": {"type": "string", "enum": CUSTOM_PLOT_COLUMNS},
+                    },
+                    "color": {"type": "string", "description": "Hex color like #EF4444."},
+                    "is_visible": {"type": "boolean"},
+                },
+                "required": ["plot_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "remove_custom_plot",
+            "description": "Remove a single custom plot by plot_id.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plot_id": {"type": "string"},
+                },
+                "required": ["plot_id"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "clear_custom_plots",
+            "description": "Remove all custom plots from the app.",
+            "parameters": {"type": "object", "properties": {}},
         },
     },
 ]
@@ -334,6 +414,60 @@ def _build_sim_request(
         selected_price_change_pct=args.get("selected_price_change_pct"),
         selected_new_price_per_litre=args.get("selected_new_price_per_litre"),
     )
+
+
+def _get_virtual_custom_plots(
+    app_state: AppStateSnapshot,
+    virtual_state: dict,
+) -> list[ChatCustomPlotSummary]:
+    if "custom_plots" not in virtual_state:
+        virtual_state["custom_plots"] = [plot.model_copy(deep=True) for plot in app_state.custom_plots]
+    return virtual_state["custom_plots"]
+
+
+def _serialize_custom_plots(plots: list[ChatCustomPlotSummary]) -> list[dict[str, Any]]:
+    return [_serialize_custom_plot(plot) for plot in plots]
+
+
+def _serialize_custom_plot(plot: ChatCustomPlotSummary) -> dict[str, Any]:
+    payload = plot.model_dump()
+    payload["plot_id"] = plot.id
+    return payload
+
+
+def _validate_custom_plot_columns(columns: Any) -> list[str]:
+    if not isinstance(columns, list) or len(columns) == 0:
+        raise ValueError("Custom plot must include at least one filter column.")
+
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for column in columns:
+        if not isinstance(column, str) or column not in CUSTOM_PLOT_COLUMNS:
+            raise ValueError(f"Unsupported custom plot column: {column}")
+        if column in seen:
+            raise ValueError(f"Duplicate custom plot column: {column}")
+        seen.add(column)
+        normalized.append(column)
+    return normalized
+
+
+def _validate_custom_plot_color(color: Any) -> str:
+    if not isinstance(color, str) or not HEX_COLOR_PATTERN.fullmatch(color):
+        raise ValueError("Custom plot color must be a hex string like #RRGGBB.")
+    return color.lower()
+
+
+def _find_custom_plot_index(plots: list[ChatCustomPlotSummary], plot_id: str) -> int:
+    for index, plot in enumerate(plots):
+        if plot.id == plot_id:
+            return index
+    return -1
+
+
+def _ensure_plot_visibility(value: Any) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError("Custom plot visibility must be true or false.")
+    return value
 
 
 def execute_tool(
@@ -405,6 +539,10 @@ def execute_tool(
             df = get_dataset(dataset_id)
             brands = get_distinct_brands(df)
             return json.dumps({"brands": brands}), ui_actions
+
+        elif tool_name == "list_custom_plots":
+            plots = _get_virtual_custom_plots(app_state, virtual_state)
+            return json.dumps({"plots": _serialize_custom_plots(plots), "count": len(plots)}), ui_actions
 
         elif tool_name == "compare_scenarios":
             results = {}
@@ -492,11 +630,94 @@ def execute_tool(
             return json.dumps({"ok": True}), ui_actions
 
         elif tool_name == "add_custom_plot":
+            plots = _get_virtual_custom_plots(app_state, virtual_state)
+            plot_id = tool_args.get("plot_id")
+            if plot_id is not None and not isinstance(plot_id, str):
+                raise ValueError("Custom plot id must be a string.")
+            plot_id = plot_id or f"chat-plot-{uuid.uuid4().hex[:12]}"
+            if _find_custom_plot_index(plots, plot_id) >= 0:
+                raise ValueError(f"Custom plot id already exists: {plot_id}")
+
+            title = str(tool_args["title"]).strip()
+            if not title:
+                raise ValueError("Custom plot title cannot be empty.")
+
+            columns = _validate_custom_plot_columns(tool_args["columns"])
+            color = (
+                _validate_custom_plot_color(tool_args["color"])
+                if "color" in tool_args and tool_args["color"] is not None
+                else CUSTOM_PLOT_COLOR_PALETTE[len(plots) % len(CUSTOM_PLOT_COLOR_PALETTE)]
+            )
+            is_visible = (
+                _ensure_plot_visibility(tool_args["is_visible"])
+                if "is_visible" in tool_args
+                else True
+            )
+
+            plot = ChatCustomPlotSummary(
+                id=plot_id,
+                title=title,
+                color=color,
+                is_visible=is_visible,
+                columns=columns,
+            )
+            plots.append(plot)
             ui_actions.append(UIAction(
                 action="add_custom_plot",
-                params={"title": tool_args["title"], "columns": tool_args["columns"]},
+                params=plot.model_dump(),
             ))
-            return json.dumps({"ok": True, "title": tool_args["title"]}), ui_actions
+            return json.dumps({"ok": True, "plot": _serialize_custom_plot(plot)}), ui_actions
+
+        elif tool_name == "update_custom_plot":
+            plots = _get_virtual_custom_plots(app_state, virtual_state)
+            plot_id = tool_args["plot_id"]
+            plot_index = _find_custom_plot_index(plots, plot_id)
+            if plot_index < 0:
+                raise ValueError(f"Custom plot not found: {plot_id}")
+
+            patch: dict[str, Any] = {}
+            if "title" in tool_args:
+                title = str(tool_args["title"]).strip()
+                if not title:
+                    raise ValueError("Custom plot title cannot be empty.")
+                patch["title"] = title
+            if "columns" in tool_args:
+                patch["columns"] = _validate_custom_plot_columns(tool_args["columns"])
+            if "color" in tool_args:
+                patch["color"] = _validate_custom_plot_color(tool_args["color"])
+            if "is_visible" in tool_args:
+                patch["is_visible"] = _ensure_plot_visibility(tool_args["is_visible"])
+            if not patch:
+                raise ValueError("No custom plot changes were provided.")
+
+            updated_plot = plots[plot_index].model_copy(update=patch)
+            plots[plot_index] = updated_plot
+            ui_actions.append(UIAction(
+                action="update_custom_plot",
+                params={"plot_id": plot_id, **patch},
+            ))
+            return json.dumps({"ok": True, "plot": _serialize_custom_plot(updated_plot)}), ui_actions
+
+        elif tool_name == "remove_custom_plot":
+            plots = _get_virtual_custom_plots(app_state, virtual_state)
+            plot_id = tool_args["plot_id"]
+            plot_index = _find_custom_plot_index(plots, plot_id)
+            if plot_index < 0:
+                raise ValueError(f"Custom plot not found: {plot_id}")
+
+            removed_plot = plots.pop(plot_index)
+            ui_actions.append(UIAction(
+                action="remove_custom_plot",
+                params={"plot_id": plot_id},
+            ))
+            return json.dumps({"ok": True, "removed_plot": _serialize_custom_plot(removed_plot)}), ui_actions
+
+        elif tool_name == "clear_custom_plots":
+            plots = _get_virtual_custom_plots(app_state, virtual_state)
+            removed_count = len(plots)
+            plots.clear()
+            ui_actions.append(UIAction(action="clear_custom_plots", params={}))
+            return json.dumps({"ok": True, "removed_count": removed_count}), ui_actions
 
         else:
             return json.dumps({"error": f"Unknown tool: {tool_name}"}), ui_actions
