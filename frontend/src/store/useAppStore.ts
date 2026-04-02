@@ -65,6 +65,7 @@ interface AppState {
   addCustomPlot: (plot: CustomPlot) => void;
   updateCustomPlot: (id: string, patch: Partial<CustomPlot>) => void;
   removeCustomPlot: (id: string) => void;
+  clearCustomPlots: () => void;
   reset: () => void;
 }
 
@@ -145,6 +146,7 @@ export const useAppStore = create<AppState>()((set) => ({
   removeCustomPlot: (id) => set((s) => ({
     customPlots: s.customPlots.filter((p) => p.id !== id),
   })),
+  clearCustomPlots: () => set({ customPlots: [] }),
 
   reset: () => set(initialState),
 }));
