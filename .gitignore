@@ -9,3 +9,4 @@ backend/data/uploads/*
 !backend/data/uploads/.gitkeep
 .DS_Store
 backend/models/
+.venv/
