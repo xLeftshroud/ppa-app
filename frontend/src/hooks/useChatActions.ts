@@ -20,7 +20,7 @@ export function applyUIAction(action: UIAction) {
       const p = action.params;
       if (p.promotion !== undefined) store.setPromotion(p.promotion as 0 | 1);
       if (p.week !== undefined) store.setWeek(p.week as number);
-      if (p.baseline_override !== undefined) store.setBaselineOverride(p.baseline_override as number | null);
+      if (p.baseline_price !== undefined) store.setBaselinePrice(p.baseline_price as number | null);
       if (p.price_change_pct !== undefined) store.setPriceChangePct(p.price_change_pct as number);
       if (p.new_price !== undefined) store.setNewPrice(p.new_price as number | null);
       break;

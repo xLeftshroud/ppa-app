@@ -23,7 +23,7 @@ export interface AppStateSnapshot {
   week: number;
   baseline_price: number | null;
   baseline_volume: number | null;
-  baseline_override: number | null;
+  baseline_price_input: number | null;
   price_change_pct: number;
   selected_new_price: number | null;
   has_simulation_result: boolean;

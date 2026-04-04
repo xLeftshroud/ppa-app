@@ -32,8 +32,8 @@ interface AppState {
   week: number;
 
   // Baseline
-  baseline: BaselineResponse | null;
-  baselineOverride: number | null;
+  historicalBaseline: BaselineResponse | null;
+  baselinePrice: number | null;
 
   // Price
   selectedPriceChangePct: number;
@@ -56,8 +56,8 @@ interface AppState {
   setCustomer: (c: string | null) => void;
   setPromotion: (p: 0 | 1) => void;
   setWeek: (w: number) => void;
-  setBaseline: (bl: BaselineResponse | null) => void;
-  setBaselineOverride: (price: number | null) => void;
+  setHistoricalBaseline: (bl: BaselineResponse | null) => void;
+  setBaselinePrice: (price: number | null) => void;
   setPriceChangePct: (pct: number) => void;
   setNewPrice: (price: number | null) => void;
   setSimulateResult: (result: SimulateResponse | null) => void;
@@ -83,8 +83,8 @@ const initialState = {
   selectedCustomer: null,
   promotionIndicator: 0 as const,
   week: 1,
-  baseline: null,
-  baselineOverride: null,
+  historicalBaseline: null,
+  baselinePrice: null,
   selectedPriceChangePct: 0,
   selectedNewPrice: null,
   simulateResult: null,
@@ -95,7 +95,7 @@ export const useAppStore = create<AppState>()((set) => ({
   ...initialState,
 
   setDataset: (id, rows, skus) =>
-    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, simulateResult: null }),
+    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalBaseline: null, baselinePrice: null, simulateResult: null }),
 
   setSelectedSku: (sku, attrs) =>
     set(sku != null
@@ -107,8 +107,8 @@ export const useAppStore = create<AppState>()((set) => ({
           attrPackType: attrs?.pack_type_internal ?? null,
           attrPackSize: attrs?.pack_size_internal ?? null,
           attrUnitsPkg: attrs?.units_per_package_internal ?? null,
-          baseline: null,
-          baselineOverride: null,
+          historicalBaseline: null,
+          baselinePrice: null,
           simulateResult: null,
         }
       : {
@@ -124,20 +124,20 @@ export const useAppStore = create<AppState>()((set) => ({
   setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null }),
 
   setCustomer: (c) =>
-    set({ selectedCustomer: c, baseline: null, baselineOverride: null }),
+    set({ selectedCustomer: c, historicalBaseline: null, baselinePrice: null }),
 
   setPromotion: (p) => set({ promotionIndicator: p }),
   setWeek: (w) => set({ week: w }),
 
-  setBaseline: (bl) => set({ baseline: bl }),
-  setBaselineOverride: (price) => set({ baselineOverride: price, simulateResult: null }),
+  setHistoricalBaseline: (bl) => set({ historicalBaseline: bl }),
+  setBaselinePrice: (price) => set({ baselinePrice: price, simulateResult: null }),
 
   setPriceChangePct: (pct) => set({ selectedPriceChangePct: pct, selectedNewPrice: null, simulateResult: null }),
   setNewPrice: (price) => set({ selectedNewPrice: price, simulateResult: null }),
 
   setSimulateResult: (result) => set({ simulateResult: result }),
 
-  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, baselineOverride: null, simulateResult: null }),
+  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalBaseline: null, baselinePrice: null, simulateResult: null }),
 
   addCustomPlot: (plot) => set((s) => ({ customPlots: [...s.customPlots, plot] })),
   updateCustomPlot: (id, patch) => set((s) => ({

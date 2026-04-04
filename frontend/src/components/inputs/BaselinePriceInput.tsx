@@ -2,55 +2,30 @@ import { useAppStore } from "@/store/useAppStore";
 import { useBaseline } from "@/hooks/useBaseline";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { useState, useEffect } from "react";
 
 export function BaselinePriceInput() {
-  const baseline = useAppStore((s) => s.baseline);
-  const baselineOverride = useAppStore((s) => s.baselineOverride);
-  const setBaselineOverride = useAppStore((s) => s.setBaselineOverride);
-  const [overrideEnabled, setOverrideEnabled] = useState(false);
+  const historicalBaseline = useAppStore((s) => s.historicalBaseline);
+  const baselinePrice = useAppStore((s) => s.baselinePrice);
+  const setBaselinePrice = useAppStore((s) => s.setBaselinePrice);
 
   const { isLoading, error, is404 } = useBaseline();
 
-  // Auto-enable override mode when baseline is not found
-  useEffect(() => {
-    if (is404) {
-      setOverrideEnabled(true);
-    }
-  }, [is404]);
-
-  const displayPrice = baselineOverride ?? baseline?.price_per_litre ?? null;
-
   // Local draft for editing
-  const [draft, setDraft] = useState(displayPrice != null ? String(displayPrice) : "");
+  const [draft, setDraft] = useState(baselinePrice != null ? String(baselinePrice) : "");
 
-  // Sync draft when display price changes externally
+  // Sync draft when baselinePrice changes externally (e.g. auto-populated from historical)
   useEffect(() => {
-    setDraft(displayPrice != null ? String(displayPrice) : "");
-  }, [displayPrice]);
-
-  const handleOverrideToggle = (checked: boolean) => {
-    setOverrideEnabled(checked);
-    if (checked) {
-      // Immediately commit the current displayed price as override
-      // so the backend predicts volume at this price via the model
-      const current = baseline?.price_per_litre;
-      if (current != null && current >= 0.01) {
-        setBaselineOverride(current);
-      }
-    } else {
-      setBaselineOverride(null);
-    }
-  };
+    setDraft(baselinePrice != null ? String(baselinePrice) : "");
+  }, [baselinePrice]);
 
   const commitPrice = () => {
     const val = parseFloat(draft);
     if (!isNaN(val) && val >= 0.01) {
-      if (val !== baselineOverride) setBaselineOverride(val);
+      if (val !== baselinePrice) setBaselinePrice(val);
     } else {
-      // Revert to current display value
-      setDraft(displayPrice != null ? String(displayPrice) : "");
+      // Revert to current value
+      setDraft(baselinePrice != null ? String(baselinePrice) : "");
     }
   };
 
@@ -59,18 +34,7 @@ export function BaselinePriceInput() {
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <Label>Baseline Price (per litre)</Label>
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-muted-foreground">Override</span>
-          <Switch
-            checked={overrideEnabled}
-            onCheckedChange={handleOverrideToggle}
-            className="scale-75"
-            disabled={is404}
-          />
-        </div>
-      </div>
+      <Label>Baseline Price (per litre)</Label>
 
       {isLoading ? (
         <div className="h-10 bg-muted animate-pulse rounded-md" />
@@ -80,7 +44,7 @@ export function BaselinePriceInput() {
         <>
           {is404 && (
             <p className="text-xs text-amber-600">
-              No baseline found for this SKU + customer. Enter a price manually.
+              No historical data found for this SKU + customer. Enter a price manually.
             </p>
           )}
           <Input
@@ -93,15 +57,14 @@ export function BaselinePriceInput() {
             onKeyDown={(e) => {
               if (e.key === "Enter") commitPrice();
             }}
-            disabled={!overrideEnabled}
-            placeholder={baseline ? String(baseline.price_per_litre) : "Enter baseline price"}
+            placeholder="Enter baseline price"
           />
         </>
       )}
 
-      {baseline && (
+      {historicalBaseline && (
         <p className="text-xs text-muted-foreground">
-          Baseline volume: {baseline.volume_units.toLocaleString()} units (week {baseline.yearweek})
+          Historical: {historicalBaseline.price_per_litre.toFixed(4)} / {historicalBaseline.volume_units.toLocaleString()} units (week {historicalBaseline.yearweek})
         </p>
       )}
     </div>
