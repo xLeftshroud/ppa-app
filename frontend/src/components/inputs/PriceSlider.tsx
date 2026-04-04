@@ -7,12 +7,11 @@ import { Label } from "@/components/ui/label";
 export function PriceSlider() {
   const selectedPriceChangePct = useAppStore((s) => s.selectedPriceChangePct);
   const selectedNewPrice = useAppStore((s) => s.selectedNewPrice);
-  const baseline = useAppStore((s) => s.baseline);
-  const baselineOverride = useAppStore((s) => s.baselineOverride);
+  const baselinePrice = useAppStore((s) => s.baselinePrice);
   const setPriceChangePct = useAppStore((s) => s.setPriceChangePct);
   const setNewPrice = useAppStore((s) => s.setNewPrice);
 
-  const basePrice = baselineOverride ?? baseline?.price_per_litre ?? 0;
+  const basePrice = baselinePrice ?? 0;
   const hasBasePrice = basePrice > 0;
   const computedPrice = selectedNewPrice ?? (hasBasePrice ? Math.max(0.01, basePrice * (1 + selectedPriceChangePct / 100)) : 0);
 

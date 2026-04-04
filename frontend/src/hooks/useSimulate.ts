@@ -11,8 +11,7 @@ export function useSimulate() {
     selectedCustomer,
     promotionIndicator,
     week,
-    baseline,
-    baselineOverride,
+    baselinePrice,
     selectedPriceChangePct,
     selectedNewPrice,
     attrBrand,
@@ -27,9 +26,7 @@ export function useSimulate() {
   const runCounter = useRef(0);
   const [runId, setRunId] = useState(0);
 
-  // Backend resolves baseline from SKU+customer or override — only trust override
-  // and current SKU presence for deciding whether percentage pricing is safe
-  const canUsePercentage = baselineOverride != null || (!!selectedSku && !!baseline);
+  const canUsePercentage = baselinePrice != null;
   const canSimulate = !!datasetId && !!selectedCustomer;
 
   const buildParams = useCallback((): SimulateRequest | null => {
@@ -45,11 +42,11 @@ export function useSimulate() {
       pack_type_internal: attrPackType,
       pack_size_internal: attrPackSize,
       units_per_package_internal: attrUnitsPkg,
-      baseline_override_price_per_litre: baselineOverride,
+      baseline_override_price_per_litre: baselinePrice,
       selected_price_change_pct: selectedNewPrice != null ? null : (canUsePercentage ? selectedPriceChangePct : null),
       selected_new_price_per_litre: selectedNewPrice,
     };
-  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselineOverride, selectedPriceChangePct, selectedNewPrice, canSimulate, canUsePercentage]);
+  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselinePrice, selectedPriceChangePct, selectedNewPrice, canSimulate, canUsePercentage]);
 
   const query = useQuery({
     queryKey: ["simulate", runId],

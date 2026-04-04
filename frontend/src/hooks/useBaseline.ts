@@ -8,7 +8,7 @@ export function useBaseline() {
   const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
   const selectedCustomer = useAppStore((s) => s.selectedCustomer);
-  const setBaseline = useAppStore((s) => s.setBaseline);
+  const setHistoricalBaseline = useAppStore((s) => s.setHistoricalBaseline);
 
   const query = useQuery({
     queryKey: ["baseline", datasetId, selectedSku, selectedCustomer],
@@ -25,11 +25,11 @@ export function useBaseline() {
 
   useEffect(() => {
     if (query.data) {
-      setBaseline(query.data);
+      setHistoricalBaseline(query.data);
     } else if (is404) {
-      setBaseline(null);
+      setHistoricalBaseline(null);
     }
-  }, [query.data, is404, setBaseline]);
+  }, [query.data, is404, setHistoricalBaseline]);
 
   return { ...query, is404 };
 }
