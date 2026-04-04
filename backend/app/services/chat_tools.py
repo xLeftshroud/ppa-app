@@ -85,7 +85,7 @@ TOOL_DEFINITIONS: list[dict] = [
                     "pack_type_internal": {"type": "string"},
                     "pack_size_internal": {"type": "integer"},
                     "units_per_package_internal": {"type": "integer"},
-                    "baseline_override_price_per_litre": {"type": "number", "minimum": 0.01},
+                    "baseline_price_per_litre": {"type": "number", "minimum": 0.01},
                     "selected_price_change_pct": {"type": "number", "minimum": -100, "maximum": 100},
                     "selected_new_price_per_litre": {"type": "number", "minimum": 0.01},
                 },
@@ -161,7 +161,7 @@ TOOL_DEFINITIONS: list[dict] = [
                             "pack_type_internal": {"type": "string"},
                             "pack_size_internal": {"type": "integer"},
                             "units_per_package_internal": {"type": "integer"},
-                            "baseline_override_price_per_litre": {"type": "number"},
+                            "baseline_price_per_litre": {"type": "number"},
                             "selected_price_change_pct": {"type": "number"},
                             "selected_new_price_per_litre": {"type": "number"},
                         },
@@ -181,7 +181,7 @@ TOOL_DEFINITIONS: list[dict] = [
                             "pack_type_internal": {"type": "string"},
                             "pack_size_internal": {"type": "integer"},
                             "units_per_package_internal": {"type": "integer"},
-                            "baseline_override_price_per_litre": {"type": "number"},
+                            "baseline_price_per_litre": {"type": "number"},
                             "selected_price_change_pct": {"type": "number"},
                             "selected_new_price_per_litre": {"type": "number"},
                         },
@@ -209,7 +209,7 @@ TOOL_DEFINITIONS: list[dict] = [
                     "pack_type_internal": {"type": "string"},
                     "pack_size_internal": {"type": "integer"},
                     "units_per_package_internal": {"type": "integer"},
-                    "baseline_override_price_per_litre": {"type": "number"},
+                    "baseline_price_per_litre": {"type": "number"},
                 },
                 "required": ["customer", "promotion_indicator", "week"],
             },
@@ -254,7 +254,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "properties": {
                     "promotion_indicator": {"type": "integer", "enum": [0, 1]},
                     "week": {"type": "integer", "minimum": 1, "maximum": 52},
-                    "baseline_override_price_per_litre": {"type": "number", "minimum": 0.01},
+                    "baseline_price_per_litre": {"type": "number", "minimum": 0.01},
                     "price_change_pct": {"type": "number", "minimum": -100, "maximum": 100},
                     "new_price_per_litre": {"type": "number", "minimum": 0.01},
                 },
@@ -410,7 +410,7 @@ def _build_sim_request(
         pack_type_internal=_resolve("pack_type_internal", app_state.pack_type),
         pack_size_internal=_resolve("pack_size_internal", app_state.pack_size),
         units_per_package_internal=_resolve("units_per_package_internal", app_state.units_pkg),
-        baseline_override_price_per_litre=args.get("baseline_override_price_per_litre", app_state.baseline_override),
+        baseline_override_price_per_litre=args.get("baseline_price_per_litre", app_state.baseline_price_input),
         selected_price_change_pct=args.get("selected_price_change_pct"),
         selected_new_price_per_litre=args.get("selected_new_price_per_litre"),
     )
@@ -604,8 +604,8 @@ def execute_tool(
             if "week" in tool_args:
                 params["week"] = tool_args["week"]
                 virtual_state["week"] = tool_args["week"]
-            if "baseline_override_price_per_litre" in tool_args:
-                params["baseline_override"] = tool_args["baseline_override_price_per_litre"]
+            if "baseline_price_per_litre" in tool_args:
+                params["baseline_price"] = tool_args["baseline_price_per_litre"]
             if "price_change_pct" in tool_args:
                 params["price_change_pct"] = tool_args["price_change_pct"]
             if "new_price_per_litre" in tool_args:
