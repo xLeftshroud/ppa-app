@@ -60,5 +60,7 @@ class SimulateResponse(BaseModel):
     model_info: ModelInfo
     warnings: list[str]
     baseline: Optional[BaselineResponse] = None
+    baseline_elasticity: Optional[float] = None
     selected: Optional[SelectedResult] = None
+    arc_elasticity: Optional[float] = None
     curve: list[CurvePoint]
