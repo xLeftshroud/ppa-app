@@ -22,6 +22,7 @@ function buildSnapshot(): AppStateSnapshot {
     baseline_price: s.historicalBaseline?.price_per_litre ?? null,
     baseline_volume: s.historicalBaseline?.volume_units ?? null,
     baseline_price_input: s.baselinePrice,
+    price_input_mode: s.priceInputMode,
     price_change_pct: s.selectedPriceChangePct,
     selected_new_price: s.selectedNewPrice,
     has_simulation_result: s.simulateResult !== null,

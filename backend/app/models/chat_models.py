@@ -30,6 +30,7 @@ class AppStateSnapshot(BaseModel):
     baseline_price: float | None = None
     baseline_volume: int | None = None
     baseline_price_input: float | None = None
+    price_input_mode: str = "direct"
     price_change_pct: float = 0
     selected_new_price: float | None = None
     has_simulation_result: bool = False

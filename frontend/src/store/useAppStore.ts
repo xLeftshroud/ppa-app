@@ -36,6 +36,7 @@ interface AppState {
   baselinePrice: number | null;
 
   // Price
+  priceInputMode: "direct" | "percentage";
   selectedPriceChangePct: number;
   selectedNewPrice: number | null;
 
@@ -58,6 +59,7 @@ interface AppState {
   setWeek: (w: number) => void;
   setHistoricalBaseline: (bl: BaselineResponse | null) => void;
   setBaselinePrice: (price: number | null) => void;
+  setPriceInputMode: (mode: "direct" | "percentage") => void;
   setPriceChangePct: (pct: number) => void;
   setNewPrice: (price: number | null) => void;
   setSimulateResult: (result: SimulateResponse | null) => void;
@@ -85,6 +87,7 @@ const initialState = {
   week: 1,
   historicalBaseline: null,
   baselinePrice: null,
+  priceInputMode: "direct" as const,
   selectedPriceChangePct: 0,
   selectedNewPrice: null,
   simulateResult: null,
@@ -132,6 +135,7 @@ export const useAppStore = create<AppState>()((set) => ({
   setHistoricalBaseline: (bl) => set({ historicalBaseline: bl }),
   setBaselinePrice: (price) => set({ baselinePrice: price, simulateResult: null }),
 
+  setPriceInputMode: (mode) => set(mode === "percentage" ? { priceInputMode: mode, selectedNewPrice: null, simulateResult: null } : { priceInputMode: mode, simulateResult: null }),
   setPriceChangePct: (pct) => set({ selectedPriceChangePct: pct, selectedNewPrice: null, simulateResult: null }),
   setNewPrice: (price) => set({ selectedNewPrice: price, simulateResult: null }),
 
