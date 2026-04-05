@@ -11,6 +11,7 @@ export function useSimulate() {
     selectedCustomer,
     promotionIndicator,
     week,
+    priceInputMode,
     baselinePrice,
     selectedPriceChangePct,
     selectedNewPrice,
@@ -43,10 +44,10 @@ export function useSimulate() {
       pack_size_internal: attrPackSize,
       units_per_package_internal: attrUnitsPkg,
       baseline_override_price_per_litre: baselinePrice,
-      selected_price_change_pct: selectedNewPrice != null ? null : (canUsePercentage ? selectedPriceChangePct : null),
-      selected_new_price_per_litre: selectedNewPrice,
+      selected_price_change_pct: priceInputMode === "percentage" && canUsePercentage ? selectedPriceChangePct : null,
+      selected_new_price_per_litre: priceInputMode === "direct" ? selectedNewPrice : null,
     };
-  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselinePrice, selectedPriceChangePct, selectedNewPrice, canSimulate, canUsePercentage]);
+  }, [datasetId, selectedSku, selectedCustomer, promotionIndicator, week, attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg, baselinePrice, priceInputMode, selectedPriceChangePct, selectedNewPrice, canSimulate, canUsePercentage]);
 
   const query = useQuery({
     queryKey: ["simulate", runId],

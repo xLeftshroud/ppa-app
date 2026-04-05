@@ -24,6 +24,7 @@ export interface AppStateSnapshot {
   baseline_price: number | null;
   baseline_volume: number | null;
   baseline_price_input: number | null;
+  price_input_mode: "direct" | "percentage";
   price_change_pct: number;
   selected_new_price: number | null;
   has_simulation_result: boolean;

@@ -3,43 +3,64 @@ import { useAppStore } from "@/store/useAppStore";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 
 export function PriceSlider() {
+  const priceInputMode = useAppStore((s) => s.priceInputMode);
+  const setPriceInputMode = useAppStore((s) => s.setPriceInputMode);
   const selectedPriceChangePct = useAppStore((s) => s.selectedPriceChangePct);
   const selectedNewPrice = useAppStore((s) => s.selectedNewPrice);
   const baselinePrice = useAppStore((s) => s.baselinePrice);
   const setPriceChangePct = useAppStore((s) => s.setPriceChangePct);
   const setNewPrice = useAppStore((s) => s.setNewPrice);
 
-  const basePrice = baselinePrice ?? 0;
-  const hasBasePrice = basePrice > 0;
-  const computedPrice = selectedNewPrice ?? (hasBasePrice ? Math.max(0.01, basePrice * (1 + selectedPriceChangePct / 100)) : 0);
+  const hasBasePrice = baselinePrice != null && baselinePrice > 0;
 
-  // Local draft for the percentage input
-  const [pctDraft, setPctDraft] = useState(String(selectedPriceChangePct));
-
-  // Sync draft when store value changes externally (e.g. slider moved)
+  // Force direct mode if no baseline price
   useEffect(() => {
-    setPctDraft(String(selectedPriceChangePct));
-  }, [selectedPriceChangePct]);
+    if (!hasBasePrice && priceInputMode === "percentage") {
+      setPriceInputMode("direct");
+    }
+  }, [hasBasePrice, priceInputMode, setPriceInputMode]);
+
+  // Computed values for the inactive mode
+  const computedDirectPrice =
+    hasBasePrice ? Math.max(0.01, baselinePrice * (1 + selectedPriceChangePct / 100)) : 0;
+  const computedPct =
+    hasBasePrice && selectedNewPrice != null
+      ? (selectedNewPrice / baselinePrice - 1) * 100
+      : 0;
+
+  // --- Percentage draft ---
+  const displayPct = priceInputMode === "percentage" ? selectedPriceChangePct : computedPct;
+  const [pctDraft, setPctDraft] = useState(String(displayPct));
+
+  useEffect(() => {
+    setPctDraft(String(Math.round(displayPct * 10) / 10));
+  }, [displayPct]);
 
   const commitPct = () => {
     const num = parseFloat(pctDraft);
     if (!isNaN(num) && num >= -100 && num <= 100) {
       if (num !== selectedPriceChangePct) setPriceChangePct(num);
     } else {
-      // Revert to current store value
-      setPctDraft(String(selectedPriceChangePct));
+      setPctDraft(String(Math.round(displayPct * 10) / 10));
     }
   };
 
-  // Local draft for the direct price input
-  const [priceDraft, setPriceDraft] = useState(selectedNewPrice != null ? String(selectedNewPrice) : "");
+  // --- Direct price draft ---
+  const displayPrice = priceInputMode === "direct" ? selectedNewPrice : computedDirectPrice;
+  const [priceDraft, setPriceDraft] = useState(
+    displayPrice != null && displayPrice > 0 ? String(displayPrice) : ""
+  );
 
-  // Sync draft when store value changes externally
   useEffect(() => {
-    setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
-  }, [selectedNewPrice]);
+    if (priceInputMode === "direct") {
+      setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
+    } else {
+      setPriceDraft(computedDirectPrice > 0 ? computedDirectPrice.toFixed(4) : "");
+    }
+  }, [selectedNewPrice, computedDirectPrice, priceInputMode]);
 
   const commitPrice = () => {
     if (priceDraft === "") {
@@ -49,17 +70,49 @@ export function PriceSlider() {
       if (!isNaN(num) && num >= 0.01) {
         if (num !== selectedNewPrice) setNewPrice(num);
       } else {
-        // Revert to current store value
         setPriceDraft(selectedNewPrice != null ? String(selectedNewPrice) : "");
       }
     }
   };
 
+  const isPctMode = priceInputMode === "percentage";
+  const isDirectMode = priceInputMode === "direct";
+
   return (
     <div className="space-y-3">
+      {/* Mode switch */}
+      <div className="flex gap-1">
+        <Button
+          variant={isPctMode ? "default" : "outline"}
+          size="sm"
+          className="flex-1 h-7 text-xs"
+          onClick={() => setPriceInputMode("percentage")}
+          disabled={!hasBasePrice}
+        >
+          % Change
+        </Button>
+        <Button
+          variant={isDirectMode ? "default" : "outline"}
+          size="sm"
+          className="flex-1 h-7 text-xs"
+          onClick={() => setPriceInputMode("direct")}
+        >
+          Direct Price
+        </Button>
+      </div>
+
+      {!hasBasePrice && isPctMode && (
+        <p className="text-xs text-amber-600">
+          Set a baseline price to use percentage mode.
+        </p>
+      )}
+
+      {/* Percentage input + slider */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label className={!hasBasePrice ? "text-muted-foreground" : ""}>Price Change (%)</Label>
+          <Label className={!isPctMode ? "text-muted-foreground" : ""}>
+            Price Change (%)
+          </Label>
           <Input
             type="number"
             step="0.1"
@@ -72,31 +125,29 @@ export function PriceSlider() {
             onKeyDown={(e) => {
               if (e.key === "Enter") commitPct();
             }}
-            disabled={!hasBasePrice}
+            disabled={!isPctMode}
           />
         </div>
         <Slider
           min={-100}
           max={100}
           step={1}
-          value={[selectedPriceChangePct]}
+          value={[isPctMode ? selectedPriceChangePct : Math.round(computedPct)]}
           onValueChange={([val]) => setPriceChangePct(val)}
-          disabled={!hasBasePrice}
+          disabled={!isPctMode}
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>-100%</span>
           <span>0%</span>
           <span>+100%</span>
         </div>
-        {!hasBasePrice && (
-          <p className="text-xs text-amber-600">
-            Set a baseline price or enter price directly below.
-          </p>
-        )}
       </div>
 
+      {/* Direct price input */}
       <div className="space-y-1.5">
-        <Label>{hasBasePrice ? "Or enter price directly" : "Enter price directly"}</Label>
+        <Label className={!isDirectMode ? "text-muted-foreground" : ""}>
+          Price (per litre)
+        </Label>
         <Input
           type="number"
           step="0.01"
@@ -108,14 +159,9 @@ export function PriceSlider() {
           onKeyDown={(e) => {
             if (e.key === "Enter") commitPrice();
           }}
+          disabled={!isDirectMode}
         />
       </div>
-
-      {basePrice > 0 && (
-        <p className="text-xs text-muted-foreground">
-          Effective price: <span className="font-mono font-medium">{computedPrice.toFixed(4)}</span>
-        </p>
-      )}
     </div>
   );
 }
