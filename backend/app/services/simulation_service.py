@@ -68,7 +68,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     if req.baseline_override_price_per_litre is not None:
         baseline_price = req.baseline_override_price_per_litre
         baseline_yearweek = bl_raw["yearweek"] if bl_raw else None
-        # Predict volume at the overridden baseline price
+        # Predict volume at the user-input baseline price
         try:
             bl_df = build_feature_df([baseline_price], req.customer,
                                      req.promotion_indicator, req.week, attrs,
@@ -76,10 +76,6 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
         except Exception as exc:
             raise InferenceError(f"Baseline volume prediction failed: {exc}")
-    elif bl_raw is not None:
-        baseline_price = bl_raw["price_per_litre"]
-        baseline_volume = bl_raw["volume_units"]
-        baseline_yearweek = bl_raw["yearweek"]
 
     # Build baseline response object if we have price data
     if baseline_price is not None and baseline_volume is not None:
