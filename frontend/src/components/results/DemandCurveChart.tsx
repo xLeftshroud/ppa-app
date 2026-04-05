@@ -200,6 +200,8 @@ export function DemandCurveChart({
       name: "Price per Litre",
       nameLocation: "middle" as const,
       nameGap: 30,
+      min: 0,
+      max: 10,
       axisLabel: { formatter: (v: number) => v.toFixed(4) },
     },
     yAxis: [
@@ -218,12 +220,17 @@ export function DemandCurveChart({
         max: 1,
       },
     ],
-    dataZoom: [
-      { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005,
-        ...(savedZoom ? { startValue: savedZoom.startValue, endValue: savedZoom.endValue } : {}) },
-      { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005,
-        ...(savedZoom ? { startValue: savedZoom.startValue, endValue: savedZoom.endValue } : {}) },
-    ],
+    dataZoom: (() => {
+      const defaultZoom = savedZoom
+        ? { startValue: savedZoom.startValue, endValue: savedZoom.endValue }
+        : priceRange
+          ? { startValue: priceRange.p1, endValue: priceRange.p99 }
+          : {};
+      return [
+        { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005, ...defaultZoom },
+        { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005, ...defaultZoom },
+      ];
+    })(),
     series: [
       {
         type: "line" as const,

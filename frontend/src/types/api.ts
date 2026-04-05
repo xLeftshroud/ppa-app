@@ -51,7 +51,9 @@ export interface SimulateResponse {
   model_info: ModelInfo;
   warnings: string[];
   baseline: BaselineResponse | null;
+  baseline_elasticity: number | null;
   selected: SelectedResult | null;
+  arc_elasticity: number | null;
   curve: CurvePoint[];
 }
 

@@ -21,11 +21,31 @@ from app.utils.feature_builder import build_feature_df
 logger = logging.getLogger(__name__)
 
 CURVE_PRICE_STEP = 0.001
+CURVE_PRICE_MAX = 10.0
+ELASTICITY_DP = 0.001  # fixed price delta for elasticity calculation
 
 _ATTR_FIELDS = [
     "product_sku_code", "top_brand", "flavor_internal",
     "pack_type_internal", "pack_size_internal", "units_per_package_internal",
 ]
+
+
+def _compute_elasticity(
+    price: float, pipeline, customer, promotion, week, attrs, continuous_week
+) -> float:
+    """Compute elasticity at a price point using single-sided +0.001 differential."""
+    p_plus = price + ELASTICITY_DP
+    try:
+        df = build_feature_df([price, p_plus], customer, promotion, week, attrs, continuous_week)
+        vols = pipeline.predict(df)
+        v0 = float(vols[0])
+        v_plus = float(vols[1])
+    except Exception as exc:
+        raise InferenceError(f"Elasticity prediction failed: {exc}")
+
+    if v0 != 0:
+        return ((v_plus - v0) / v0) / (ELASTICITY_DP / price)
+    return 0.0
 
 
 def run_simulation(req: SimulateRequest) -> SimulateResponse:
@@ -64,6 +84,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     baseline_volume: Optional[int] = None
     baseline_yearweek: Optional[int] = None
     baseline_response: Optional[BaselineResponse] = None
+    baseline_elast: Optional[float] = None
 
     if req.baseline_override_price_per_litre is not None:
         baseline_price = req.baseline_override_price_per_litre
@@ -77,6 +98,12 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         except Exception as exc:
             raise InferenceError(f"Baseline volume prediction failed: {exc}")
 
+        # Compute baseline elasticity
+        baseline_elast = _compute_elasticity(
+            baseline_price, pipeline, req.customer,
+            req.promotion_indicator, req.week, attrs, continuous_week,
+        )
+
     # Build baseline response object if we have price data
     if baseline_price is not None and baseline_volume is not None:
         baseline_response = BaselineResponse(
@@ -85,27 +112,16 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             volume_units=baseline_volume,
         )
 
-    # --- Curve: −100% to +100% of baseline, step 0.001 ---
+    # --- Curve: fixed 0.001 to 10.0, step 0.001 ---
     all_prices: list[float] = []
-
-    if baseline_price is not None:
-        p_start = CURVE_PRICE_STEP  # −100% clamps to 0; minimum valid price at 3dp
-        p_end = round(baseline_price * 2.0, 3)
-    else:
-        price_meta = metadata.get("price_per_litre", {})
-        p_start = round(price_meta.get("p1", 0.5), 3)
-        p_end = round(price_meta.get("p99", 7.0), 3)
-
-    p = p_start
-    while p <= p_end:
-        all_prices.append(p)
+    p = CURVE_PRICE_STEP
+    while p <= CURVE_PRICE_MAX:
+        all_prices.append(round(p, 3))
         p = round(p + CURVE_PRICE_STEP, 3)
-
-    all_prices_sorted = all_prices
 
     # Batch predict for entire curve
     try:
-        curve_df = build_feature_df(all_prices_sorted, req.customer,
+        curve_df = build_feature_df(all_prices, req.customer,
                                     req.promotion_indicator, req.week, attrs,
                                     continuous_week)
         curve_volumes = pipeline.predict(curve_df)
@@ -114,12 +130,12 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
     # Build price -> volume mapping
     price_to_vol: dict[float, float] = {}
-    for price, vol in zip(all_prices_sorted, curve_volumes):
+    for price, vol in zip(all_prices, curve_volumes):
         price_to_vol[round(price, 4)] = float(vol)
 
     # Build curve points sorted by price
     curve_points: list[CurvePoint] = []
-    for price in all_prices_sorted:
+    for price in all_prices:
         vol = price_to_vol[round(price, 4)]
         if baseline_price is not None and baseline_price > 0:
             pct = (price / baseline_price - 1) * 100
@@ -136,6 +152,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
                        or req.selected_price_change_pct is not None)
 
     selected_result: Optional[SelectedResult] = None
+    arc_elast: Optional[float] = None
 
     if has_price_input:
         if req.selected_new_price_per_litre is not None:
@@ -160,31 +177,11 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         except Exception as exc:
             raise InferenceError(f"Selected-point prediction failed: {exc}")
 
-        # --- Elasticity (local +/-1% differential) ---
-        p_minus = max(0.01, p0 * 0.99)
-        p_plus = p0 * 1.01
-
-        try:
-            elast_prices = [p_minus, p_plus]
-            elast_df = build_feature_df(elast_prices, req.customer,
-                                        req.promotion_indicator, req.week, attrs,
-                                        continuous_week)
-            elast_vols = pipeline.predict(elast_df)
-            v_minus = float(elast_vols[0])
-            v_plus = float(elast_vols[1])
-        except Exception as exc:
-            raise InferenceError(f"Elasticity prediction failed: {exc}")
-
-        if p_minus == p0:
-            if v0 != 0 and (p_plus - p0) != 0:
-                elasticity = ((v_plus - v0) / v0) / ((p_plus - p0) / p0)
-            else:
-                elasticity = 0.0
-        else:
-            if v0 != 0 and (p_plus - p_minus) != 0:
-                elasticity = ((v_plus - v_minus) / v0) / ((p_plus - p_minus) / p0)
-            else:
-                elasticity = 0.0
+        # Elasticity at selected price (single-sided +0.001)
+        elasticity = _compute_elasticity(
+            p0, pipeline, req.customer,
+            req.promotion_indicator, req.week, attrs, continuous_week,
+        )
 
         # Delta from baseline (0 if no baseline)
         if baseline_volume is not None:
@@ -202,6 +199,15 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             delta_volume_pct=round(delta_pct, 6),
             elasticity=round(elasticity, 6),
         )
+
+        # Arc elasticity between baseline and selected (only when both exist)
+        if baseline_price is not None and baseline_volume is not None:
+            dp = p0 - baseline_price
+            if dp != 0 and baseline_volume != 0:
+                arc_elast = round(
+                    ((v0 - baseline_volume) / baseline_volume) / (dp / baseline_price),
+                    6,
+                )
 
     # --- Warnings ---
     warnings: list[str] = []
@@ -224,6 +230,8 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         ),
         warnings=warnings,
         baseline=baseline_response,
+        baseline_elasticity=round(baseline_elast, 6) if baseline_elast is not None else None,
         selected=selected_result,
+        arc_elasticity=arc_elast,
         curve=curve_points,
     )
