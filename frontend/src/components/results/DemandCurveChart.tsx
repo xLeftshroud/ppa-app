@@ -1,12 +1,9 @@
 import ReactECharts from "echarts-for-react";
-import { useRef, useCallback, useMemo, useEffect } from "react";
+import { useRef, useCallback, useMemo } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CurvePoint, PriceRange, ScatterPoint } from "@/types/api";
-
-// Module-level zoom state — survives key-driven remounts
-let savedZoom: { startValue: number; endValue: number } | null = null;
 
 export type ScatterOverlay = {
   id: string;
@@ -55,7 +52,6 @@ export function DemandCurveChart({
     if (!dz || dz.startValue == null || dz.endValue == null) return;
     const xMin = dz.startValue;
     const xMax = dz.endValue;
-    savedZoom = { startValue: xMin, endValue: xMax };
     const visible = curResult.curve.filter(
       (p: CurvePoint) => p.price_per_litre >= xMin && p.price_per_litre <= xMax
     );
@@ -83,14 +79,6 @@ export function DemandCurveChart({
     () => scatterOverlays.map((o) => o.id).sort().join(","),
     [scatterOverlays],
   );
-
-  // After remount with saved zoom, trigger Y-axis adjustment
-  useEffect(() => {
-    if (savedZoom) {
-      const timer = setTimeout(onDataZoom, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [chartKey, onDataZoom]);
 
   if (isLoading) {
     return (
@@ -221,11 +209,12 @@ export function DemandCurveChart({
       },
     ],
     dataZoom: (() => {
-      const defaultZoom = savedZoom
-        ? { startValue: savedZoom.startValue, endValue: savedZoom.endValue }
-        : priceRange
-          ? { startValue: priceRange.p1, endValue: priceRange.p99 }
-          : {};
+      const defaultZoom = priceRange
+        ? (() => {
+            const padding = (priceRange.p99 - priceRange.p1) / 6;
+            return { startValue: Math.max(0, priceRange.p1 - padding), endValue: Math.min(10, priceRange.p99 + padding) };
+          })()
+        : {};
       return [
         { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005, ...defaultZoom },
         { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005, ...defaultZoom },

@@ -26,6 +26,21 @@ class SimulateRequest(BaseModel):
     selected_new_price_per_litre: Optional[float] = Field(None, ge=0.01)
 
 
+class PredictPointsRequest(BaseModel):
+    dataset_id: str
+    product_sku_code: Optional[int] = None
+    customer: CustomerEnum
+    promotion_indicator: Literal[0, 1]
+    week: int = Field(..., ge=1, le=52)
+    top_brand: Optional[str] = None
+    flavor_internal: Optional[str] = None
+    pack_type_internal: Optional[str] = None
+    pack_size_internal: Optional[int] = None
+    units_per_package_internal: Optional[int] = None
+    baseline_price: Optional[float] = Field(None, ge=0.01)
+    selected_price: Optional[float] = Field(None, ge=0.01)
+
+
 class SkuLookupRequest(BaseModel):
     dataset_id: str
     top_brand: str

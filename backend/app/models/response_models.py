@@ -55,6 +55,18 @@ class ModelInfo(BaseModel):
     features_version: str
 
 
+class PointPrediction(BaseModel):
+    price_per_litre: float
+    predicted_volume: float
+    elasticity: float
+
+
+class PredictPointsResponse(BaseModel):
+    baseline: Optional[PointPrediction] = None
+    selected: Optional[PointPrediction] = None
+    arc_elasticity: Optional[float] = None
+
+
 class SimulateResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
     model_info: ModelInfo

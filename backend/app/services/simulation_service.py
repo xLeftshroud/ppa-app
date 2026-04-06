@@ -3,11 +3,13 @@ from __future__ import annotations
 import logging
 from typing import Optional
 
-from app.models.request_models import SimulateRequest
+from app.models.request_models import PredictPointsRequest, SimulateRequest
 from app.models.response_models import (
     BaselineResponse,
     CurvePoint,
     ModelInfo,
+    PointPrediction,
+    PredictPointsResponse,
     SelectedResult,
     SimulateResponse,
 )
@@ -234,4 +236,82 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         selected=selected_result,
         arc_elasticity=arc_elast,
         curve=curve_points,
+    )
+
+
+def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
+    """Lightweight prediction at 1-2 price points without regenerating the full curve."""
+    df = get_dataset(req.dataset_id)
+    pipeline = get_pipeline()
+
+    if "continuous_week" in df.columns:
+        continuous_week = int(df["continuous_week"].max()) + 1
+    else:
+        continuous_week = 0
+
+    attrs: dict = {}
+    for field in _ATTR_FIELDS:
+        val = getattr(req, field, None)
+        if val is not None:
+            attrs[field] = val
+
+    if req.product_sku_code is not None:
+        sku_row = get_sku_attributes(df, req.product_sku_code)
+        if sku_row is not None:
+            attrs.setdefault("material_medium_description", sku_row["material_medium_description"])
+
+    baseline_pred: Optional[PointPrediction] = None
+    selected_pred: Optional[PointPrediction] = None
+    arc_elast: Optional[float] = None
+
+    bl_vol: Optional[float] = None
+    sel_vol: Optional[float] = None
+
+    if req.baseline_price is not None:
+        try:
+            bl_df = build_feature_df([req.baseline_price], req.customer,
+                                     req.promotion_indicator, req.week, attrs,
+                                     continuous_week)
+            bl_vol = float(pipeline.predict(bl_df)[0])
+        except Exception as exc:
+            raise InferenceError(f"Baseline prediction failed: {exc}")
+
+        bl_elast = _compute_elasticity(
+            req.baseline_price, pipeline, req.customer,
+            req.promotion_indicator, req.week, attrs, continuous_week,
+        )
+        baseline_pred = PointPrediction(
+            price_per_litre=round(req.baseline_price, 6),
+            predicted_volume=round(bl_vol, 2),
+            elasticity=round(bl_elast, 6),
+        )
+
+    if req.selected_price is not None:
+        try:
+            sel_df = build_feature_df([req.selected_price], req.customer,
+                                      req.promotion_indicator, req.week, attrs,
+                                      continuous_week)
+            sel_vol = float(pipeline.predict(sel_df)[0])
+        except Exception as exc:
+            raise InferenceError(f"Selected prediction failed: {exc}")
+
+        sel_elast = _compute_elasticity(
+            req.selected_price, pipeline, req.customer,
+            req.promotion_indicator, req.week, attrs, continuous_week,
+        )
+        selected_pred = PointPrediction(
+            price_per_litre=round(req.selected_price, 6),
+            predicted_volume=round(sel_vol, 2),
+            elasticity=round(sel_elast, 6),
+        )
+
+    if bl_vol is not None and sel_vol is not None and req.baseline_price is not None and req.selected_price is not None:
+        dp = req.selected_price - req.baseline_price
+        if dp != 0 and bl_vol != 0:
+            arc_elast = round(((sel_vol - bl_vol) / bl_vol) / (dp / req.baseline_price), 6)
+
+    return PredictPointsResponse(
+        baseline=baseline_pred,
+        selected=selected_pred,
+        arc_elasticity=arc_elast,
     )
