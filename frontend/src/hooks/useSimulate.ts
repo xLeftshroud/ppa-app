@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { runSimulation, predictPoints } from "@/api/simulate";
+import { fetchPriceRange } from "@/api/priceRange";
 import { useAppStore } from "@/store/useAppStore";
 import type { SimulateRequest, PredictPointsRequest, SimulateResponse } from "@/types/api";
 
@@ -49,6 +50,7 @@ export function useSimulate() {
     cachedCurve,
     cachedCurveFingerprint,
     setSimulateResult,
+    setPriceRange,
     setCachedCurve,
   } = useAppStore();
 
@@ -84,7 +86,7 @@ export function useSimulate() {
       const curveChanged = currentFingerprint !== cachedCurveFingerprint || !cachedCurve;
 
       if (curveChanged) {
-        // Full simulation: regenerate curve + predict points
+        // Full simulation: regenerate curve + predict points + price range
         const params: SimulateRequest = {
           dataset_id: datasetId,
           product_sku_code: selectedSku,
@@ -101,9 +103,13 @@ export function useSimulate() {
           selected_new_price_per_litre: priceInputMode === "direct" ? selectedNewPrice : null,
         };
 
-        const result = await runSimulation(params);
+        const [result, priceRangeResult] = await Promise.all([
+          runSimulation(params),
+          selectedSku != null ? fetchPriceRange(selectedSku).catch(() => null) : Promise.resolve(null),
+        ]);
         if (thisRun !== runCounter.current) return; // stale
         setCachedCurve(result.curve, currentFingerprint);
+        setPriceRange(priceRangeResult);
         setSimulateResult(result);
       } else {
         // Lightweight: only predict baseline + selected points, reuse cached curve
@@ -179,7 +185,7 @@ export function useSimulate() {
     attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg,
     baselinePrice, priceInputMode, selectedPriceChangePct, selectedNewPrice,
     cachedCurve, cachedCurveFingerprint,
-    setSimulateResult, setCachedCurve,
+    setSimulateResult, setPriceRange, setCachedCurve,
   ]);
 
   return { isLoading, isFetching: isLoading, error, canSimulate, runNow };

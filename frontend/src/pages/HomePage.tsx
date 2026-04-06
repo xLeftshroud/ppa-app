@@ -21,7 +21,6 @@ import { CsvUploadZone } from "@/components/upload/CsvUploadZone";
 import { useAllCustomPlotData } from "@/hooks/useAllCustomPlotData";
 import { useBrands, useFlavors, usePackTypes } from "@/hooks/useCatalog";
 import { useChat } from "@/hooks/useChat";
-import { usePriceRange } from "@/hooks/usePriceRange";
 import { useSimulate } from "@/hooks/useSimulate";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
@@ -46,7 +45,7 @@ export function HomePage() {
   const chat = useChat(runNow);
   const isChatOpen = chat.isOpen;
 
-  const { data: priceRange } = usePriceRange(selectedSku);
+  const priceRange = useAppStore((s) => s.priceRange);
   const { data: brands = [] } = useBrands(datasetId);
   const { data: flavors = [] } = useFlavors(datasetId);
   const { data: packTypes = [] } = usePackTypes(datasetId);
@@ -148,12 +147,12 @@ export function HomePage() {
               <div className="min-w-0 flex-1 space-y-4">
                 <WarningsBanner />
                 <ResultsCard isLoading={isLoading || isFetching} />
-                <PriceRangeCard priceRange={priceRange ?? null} />
+                <PriceRangeCard priceRange={priceRange} />
                 <div className={cn("flex min-w-0 gap-4", isChatOpen ? "flex-col 2xl:flex-row" : "lg:flex-row")}>
                   <div className="min-w-0 flex-1">
                     <DemandCurveChart
                       isLoading={isLoading || isFetching}
-                      priceRange={priceRange ?? null}
+                      priceRange={priceRange}
                       scatterOverlays={scatterOverlays}
                     />
                   </div>
