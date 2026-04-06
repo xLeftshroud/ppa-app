@@ -44,6 +44,18 @@ interface AppState {
   simulateResult: SimulateResponse | null;
   priceRange: PriceRange | null;
 
+  // Committed attrs snapshot (updated only on simulate, used by scatter overlays)
+  committedAttrs: {
+    selectedSku: number | null;
+    attrBrand: string | null;
+    attrFlavor: string | null;
+    attrPackType: string | null;
+    attrPackSize: number | null;
+    attrUnitsPkg: number | null;
+    selectedCustomer: string | null;
+    promotionIndicator: 0 | 1;
+  } | null;
+
   // Curve cache
   cachedCurve: CurvePoint[] | null;
   cachedCurveFingerprint: string | null;
@@ -69,6 +81,7 @@ interface AppState {
   setNewPrice: (price: number | null) => void;
   setSimulateResult: (result: SimulateResponse | null) => void;
   setPriceRange: (pr: PriceRange | null) => void;
+  commitAttrs: () => void;
   setCachedCurve: (curve: CurvePoint[], fingerprint: string) => void;
   clearSkuAttrs: () => void;
   addCustomPlot: (plot: CustomPlot) => void;
@@ -101,6 +114,7 @@ const initialState = {
   priceRange: null,
   cachedCurve: null,
   cachedCurveFingerprint: null,
+  committedAttrs: null,
   customPlots: [],
 };
 
@@ -152,6 +166,18 @@ export const useAppStore = create<AppState>()((set) => ({
 
   setSimulateResult: (result) => set({ simulateResult: result }),
   setPriceRange: (pr) => set({ priceRange: pr }),
+  commitAttrs: () => set((s) => ({
+    committedAttrs: {
+      selectedSku: s.selectedSku,
+      attrBrand: s.attrBrand,
+      attrFlavor: s.attrFlavor,
+      attrPackType: s.attrPackType,
+      attrPackSize: s.attrPackSize,
+      attrUnitsPkg: s.attrUnitsPkg,
+      selectedCustomer: s.selectedCustomer,
+      promotionIndicator: s.promotionIndicator,
+    },
+  })),
   setCachedCurve: (curve, fingerprint) => set({ cachedCurve: curve, cachedCurveFingerprint: fingerprint }),
 
   clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalBaseline: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
