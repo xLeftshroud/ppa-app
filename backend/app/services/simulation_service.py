@@ -32,13 +32,20 @@ _ATTR_FIELDS = [
 ]
 
 
+def _filter_features(df, metadata_features: list[str]):
+    """Keep only the columns that the pipeline expects (from metadata.json)."""
+    cols = [c for c in metadata_features if c in df.columns]
+    return df[cols]
+
+
 def _compute_elasticity(
-    price: float, pipeline, customer, promotion, week, attrs, continuous_week
+    price: float, pipeline, metadata_features, customer, promotion, week, attrs, continuous_week
 ) -> float:
     """Compute elasticity at a price point using single-sided +0.001 differential."""
     p_plus = price + ELASTICITY_DP
     try:
         df = build_feature_df([price, p_plus], customer, promotion, week, attrs, continuous_week)
+        df = _filter_features(df, metadata_features)
         vols = pipeline.predict(df)
         v0 = float(vols[0])
         v_plus = float(vols[1])
@@ -54,6 +61,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     df = get_dataset(req.dataset_id)
     pipeline = get_pipeline()
     metadata = get_metadata()
+    metadata_features: list[str] = metadata.get("features", [])
 
     # Derive continuous_week: max from dataset + 1 (next unseen week)
     if "continuous_week" in df.columns:
@@ -76,7 +84,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
     # --- Baseline (optional) ---
     bl_raw: Optional[dict] = None
-    if req.product_sku_code is not None:
+    if req.product_sku_code is not None and req.customer is not None:
         try:
             bl_raw = get_baseline(df, req.product_sku_code, req.customer)
         except BaselineNotFound:
@@ -96,13 +104,14 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             bl_df = build_feature_df([baseline_price], req.customer,
                                      req.promotion_indicator, req.week, attrs,
                                      continuous_week)
+            bl_df = _filter_features(bl_df, metadata_features)
             baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
         except Exception as exc:
             raise InferenceError(f"Baseline volume prediction failed: {exc}")
 
         # Compute baseline elasticity
         baseline_elast = _compute_elasticity(
-            baseline_price, pipeline, req.customer,
+            baseline_price, pipeline, metadata_features, req.customer,
             req.promotion_indicator, req.week, attrs, continuous_week,
         )
 
@@ -126,6 +135,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         curve_df = build_feature_df(all_prices, req.customer,
                                     req.promotion_indicator, req.week, attrs,
                                     continuous_week)
+        curve_df = _filter_features(curve_df, metadata_features)
         curve_volumes = pipeline.predict(curve_df)
     except Exception as exc:
         raise InferenceError(f"Curve prediction failed: {exc}")
@@ -175,13 +185,14 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
             v0_df = build_feature_df([p0], req.customer,
                                      req.promotion_indicator, req.week, attrs,
                                      continuous_week)
+            v0_df = _filter_features(v0_df, metadata_features)
             v0 = float(pipeline.predict(v0_df)[0])
         except Exception as exc:
             raise InferenceError(f"Selected-point prediction failed: {exc}")
 
         # Elasticity at selected price (single-sided +0.001)
         elasticity = _compute_elasticity(
-            p0, pipeline, req.customer,
+            p0, pipeline, metadata_features, req.customer,
             req.promotion_indicator, req.week, attrs, continuous_week,
         )
 
@@ -213,7 +224,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
     # --- Warnings ---
     warnings: list[str] = []
-    if bl_raw is None:
+    if bl_raw is None and req.product_sku_code is not None:
         warnings.append("No baseline data found for this SKU + customer combination")
     if has_price_input:
         price_meta = metadata.get("price_per_litre", {})
@@ -243,6 +254,8 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
     """Lightweight prediction at 1-2 price points without regenerating the full curve."""
     df = get_dataset(req.dataset_id)
     pipeline = get_pipeline()
+    metadata = get_metadata()
+    metadata_features: list[str] = metadata.get("features", [])
 
     if "continuous_week" in df.columns:
         continuous_week = int(df["continuous_week"].max()) + 1
@@ -272,12 +285,13 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
             bl_df = build_feature_df([req.baseline_price], req.customer,
                                      req.promotion_indicator, req.week, attrs,
                                      continuous_week)
+            bl_df = _filter_features(bl_df, metadata_features)
             bl_vol = float(pipeline.predict(bl_df)[0])
         except Exception as exc:
             raise InferenceError(f"Baseline prediction failed: {exc}")
 
         bl_elast = _compute_elasticity(
-            req.baseline_price, pipeline, req.customer,
+            req.baseline_price, pipeline, metadata_features, req.customer,
             req.promotion_indicator, req.week, attrs, continuous_week,
         )
         baseline_pred = PointPrediction(
@@ -291,12 +305,13 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
             sel_df = build_feature_df([req.selected_price], req.customer,
                                       req.promotion_indicator, req.week, attrs,
                                       continuous_week)
+            sel_df = _filter_features(sel_df, metadata_features)
             sel_vol = float(pipeline.predict(sel_df)[0])
         except Exception as exc:
             raise InferenceError(f"Selected prediction failed: {exc}")
 
         sel_elast = _compute_elasticity(
-            req.selected_price, pipeline, req.customer,
+            req.selected_price, pipeline, metadata_features, req.customer,
             req.promotion_indicator, req.week, attrs, continuous_week,
         )
         selected_pred = PointPrediction(

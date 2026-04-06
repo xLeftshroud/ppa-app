@@ -20,7 +20,7 @@ export interface AppStateSnapshot {
   units_pkg: number | null;
   customer: string | null;
   promotion: 0 | 1;
-  week: number;
+  week: number | null;
   baseline_price: number | null;
   baseline_volume: number | null;
   baseline_price_input: number | null;

@@ -7,22 +7,24 @@ import pandas as pd
 
 def build_feature_df(
     prices: list[float],
-    customer: str,
+    customer: str | None,
     promotion_indicator: int,
-    week: int,
+    week: int | None,
     attrs: dict,
     continuous_week: int = 0,
 ) -> pd.DataFrame:
-    week_sin = math.sin(2 * math.pi * week / 52)
-    week_cos = math.cos(2 * math.pi * week / 52)
-
-    base = {
-        "customer": customer,
+    base: dict = {
         "promotion_indicator": promotion_indicator,
-        "week_sin": week_sin,
-        "week_cos": week_cos,
         "continuous_week": continuous_week,
     }
+
+    if customer is not None:
+        base["customer"] = customer
+
+    if week is not None:
+        base["week_sin"] = math.sin(2 * math.pi * week / 52)
+        base["week_cos"] = math.cos(2 * math.pi * week / 52)
+
     # Include only non-None attribute values from frontend
     for key, val in attrs.items():
         base[key] = val

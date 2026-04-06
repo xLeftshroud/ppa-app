@@ -8,9 +8,9 @@ import type { SimulateRequest, PredictPointsRequest, SimulateResponse } from "@/
 function buildFingerprint(s: {
   datasetId: string;
   selectedSku: number | null;
-  selectedCustomer: string;
+  selectedCustomer: string | null;
   promotionIndicator: 0 | 1;
-  week: number;
+  week: number | null;
   attrBrand: string | null;
   attrFlavor: string | null;
   attrPackType: string | null;
@@ -58,10 +58,10 @@ export function useSimulate() {
   const [error, setError] = useState<Error | null>(null);
   const runCounter = useRef(0);
 
-  const canSimulate = !!datasetId && !!selectedCustomer;
+  const canSimulate = !!datasetId;
 
   const runNow = useCallback(async () => {
-    if (!datasetId || !selectedCustomer) return;
+    if (!datasetId) return;
 
     const canUsePercentage = baselinePrice != null;
     const currentFingerprint = buildFingerprint({

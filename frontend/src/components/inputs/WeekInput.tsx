@@ -7,20 +7,25 @@ export function WeekInput() {
   const week = useAppStore((s) => s.week);
   const setWeek = useAppStore((s) => s.setWeek);
 
-  const [draft, setDraft] = useState(String(week));
+  const [draft, setDraft] = useState(week != null ? String(week) : "");
 
   // Sync draft when store value changes externally
   useEffect(() => {
-    setDraft(String(week));
+    setDraft(week != null ? String(week) : "");
   }, [week]);
 
   const commit = () => {
-    const val = parseInt(draft, 10);
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      if (week !== null) setWeek(null);
+      return;
+    }
+    const val = parseInt(trimmed, 10);
     if (!isNaN(val) && val >= 1 && val <= 52) {
       if (val !== week) setWeek(val);
     } else {
       // Revert to current store value
-      setDraft(String(week));
+      setDraft(week != null ? String(week) : "");
     }
   };
 
@@ -31,6 +36,7 @@ export function WeekInput() {
         type="number"
         min={1}
         max={52}
+        placeholder="None"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
