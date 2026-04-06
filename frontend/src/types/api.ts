@@ -60,9 +60,9 @@ export interface SimulateResponse {
 export interface SimulateRequest {
   dataset_id: string;
   product_sku_code: number | null;
-  customer: string;
+  customer: string | null;
   promotion_indicator: 0 | 1;
-  week: number;
+  week: number | null;
   top_brand: string | null;
   flavor_internal: string | null;
   pack_type_internal: string | null;
@@ -76,9 +76,9 @@ export interface SimulateRequest {
 export interface PredictPointsRequest {
   dataset_id: string;
   product_sku_code: number | null;
-  customer: string;
+  customer: string | null;
   promotion_indicator: 0 | 1;
-  week: number;
+  week: number | null;
   top_brand: string | null;
   flavor_internal: string | null;
   pack_type_internal: string | null;

@@ -2,20 +2,18 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
 
 VALID_CUSTOMERS = ["L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"]
-
-CustomerEnum = Literal["L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"]
 
 
 class SimulateRequest(BaseModel):
     dataset_id: str
     product_sku_code: Optional[int] = None
-    customer: CustomerEnum
-    promotion_indicator: Literal[0, 1]
-    week: int = Field(..., ge=1, le=52)
+    customer: Optional[str] = None
+    promotion_indicator: Literal[0, 1] = 0
+    week: Optional[int] = Field(None, ge=1, le=52)
     top_brand: Optional[str] = None
     flavor_internal: Optional[str] = None
     pack_type_internal: Optional[str] = None
@@ -29,9 +27,9 @@ class SimulateRequest(BaseModel):
 class PredictPointsRequest(BaseModel):
     dataset_id: str
     product_sku_code: Optional[int] = None
-    customer: CustomerEnum
-    promotion_indicator: Literal[0, 1]
-    week: int = Field(..., ge=1, le=52)
+    customer: Optional[str] = None
+    promotion_indicator: Literal[0, 1] = 0
+    week: Optional[int] = Field(None, ge=1, le=52)
     top_brand: Optional[str] = None
     flavor_internal: Optional[str] = None
     pack_type_internal: Optional[str] = None

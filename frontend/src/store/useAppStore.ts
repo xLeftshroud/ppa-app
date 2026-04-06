@@ -29,7 +29,7 @@ interface AppState {
   // Controls
   selectedCustomer: string | null;
   promotionIndicator: 0 | 1;
-  week: number;
+  week: number | null;
 
   // Baseline
   historicalBaseline: BaselineResponse | null;
@@ -61,7 +61,7 @@ interface AppState {
   setAttrUnitsPkg: (v: number | null) => void;
   setCustomer: (c: string | null) => void;
   setPromotion: (p: 0 | 1) => void;
-  setWeek: (w: number) => void;
+  setWeek: (w: number | null) => void;
   setHistoricalBaseline: (bl: BaselineResponse | null) => void;
   setBaselinePrice: (price: number | null) => void;
   setPriceInputMode: (mode: "direct" | "percentage") => void;
@@ -91,7 +91,7 @@ const initialState = {
   attrUnitsPkg: null,
   selectedCustomer: null,
   promotionIndicator: 0 as const,
-  week: 1,
+  week: null,
   historicalBaseline: null,
   baselinePrice: null,
   priceInputMode: "direct" as const,

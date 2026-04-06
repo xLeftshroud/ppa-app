@@ -26,7 +26,7 @@ class AppStateSnapshot(BaseModel):
     units_pkg: int | None = None
     customer: str | None = None
     promotion: Literal[0, 1] = 0
-    week: int = 1
+    week: int | None = None
     baseline_price: float | None = None
     baseline_volume: int | None = None
     baseline_price_input: float | None = None
