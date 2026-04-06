@@ -37,6 +37,16 @@ export function DemandCurveChart({
   const result = useAppStore((s) => s.simulateResult);
   const chartRef = useRef<ReactECharts>(null);
 
+  // Persist zoom state (x-axis range + y-axis bounds) across re-renders and key-based remounts
+  const zoomStateRef = useRef<{ startValue: number; endValue: number; yMin: number; yMax: number } | null>(null);
+
+  // Reset saved zoom when priceRange changes (new simulation)
+  const prevPriceRangeRef = useRef(priceRange);
+  if (priceRange !== prevPriceRangeRef.current) {
+    prevPriceRangeRef.current = priceRange;
+    zoomStateRef.current = null;
+  }
+
   // Use refs so onDataZoom always reads latest values without needing them as deps
   const scatterOverlaysRef = useRef(scatterOverlays);
   scatterOverlaysRef.current = scatterOverlays;
@@ -67,6 +77,7 @@ export function DemandCurveChart({
     const yMin = Math.min(...volumes);
     const yMax = Math.max(...volumes);
     const padding = (yMax - yMin) * 0.05 || 1;
+    zoomStateRef.current = { startValue: xMin, endValue: xMax, yMin: yMin - padding, yMax: yMax + padding };
     instance.setOption({ yAxis: [{ min: yMin - padding, max: yMax + padding }] }, false, true);
   }, []);
 
@@ -199,6 +210,7 @@ export function DemandCurveChart({
         nameLocation: "middle" as const,
         nameGap: 55,
         scale: true,
+        ...(zoomStateRef.current ? { min: zoomStateRef.current.yMin, max: zoomStateRef.current.yMax } : {}),
         axisLabel: { formatter: (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)) },
       },
       {
@@ -209,15 +221,17 @@ export function DemandCurveChart({
       },
     ],
     dataZoom: (() => {
-      const defaultZoom = priceRange
-        ? (() => {
-            const padding = (priceRange.p99 - priceRange.p1) / 6;
-            return { startValue: Math.max(0, priceRange.p1 - padding), endValue: Math.min(10, priceRange.p99 + padding) };
-          })()
-        : {};
+      const zoomValues = zoomStateRef.current
+        ? { startValue: zoomStateRef.current.startValue, endValue: zoomStateRef.current.endValue }
+        : priceRange
+          ? (() => {
+              const padding = (priceRange.p99 - priceRange.p1) / 6;
+              return { startValue: Math.max(0, priceRange.p1 - padding), endValue: Math.min(10, priceRange.p99 + padding) };
+            })()
+          : {};
       return [
-        { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005, ...defaultZoom },
-        { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005, ...defaultZoom },
+        { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const, minValueSpan: 0.0005, ...zoomValues },
+        { type: "slider" as const, xAxisIndex: 0, bottom: 10, filterMode: "none" as const, minValueSpan: 0.0005, ...zoomValues },
       ];
     })(),
     series: [

@@ -52,6 +52,7 @@ export function useSimulate() {
     setSimulateResult,
     setPriceRange,
     setCachedCurve,
+    commitAttrs,
   } = useAppStore();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -81,6 +82,7 @@ export function useSimulate() {
     const thisRun = runCounter.current;
     setIsLoading(true);
     setError(null);
+    commitAttrs();
 
     try {
       const curveChanged = currentFingerprint !== cachedCurveFingerprint || !cachedCurve;
@@ -185,7 +187,7 @@ export function useSimulate() {
     attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg,
     baselinePrice, priceInputMode, selectedPriceChangePct, selectedNewPrice,
     cachedCurve, cachedCurveFingerprint,
-    setSimulateResult, setPriceRange, setCachedCurve,
+    setSimulateResult, setPriceRange, setCachedCurve, commitAttrs,
   ]);
 
   return { isLoading, isFetching: isLoading, error, canSimulate, runNow };
