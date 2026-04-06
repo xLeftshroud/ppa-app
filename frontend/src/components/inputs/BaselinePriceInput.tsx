@@ -20,7 +20,12 @@ export function BaselinePriceInput() {
   }, [baselinePrice]);
 
   const commitPrice = () => {
-    const val = parseFloat(draft);
+    const trimmed = draft.trim();
+    if (trimmed === "") {
+      if (baselinePrice !== null) setBaselinePrice(null);
+      return;
+    }
+    const val = parseFloat(trimmed);
     if (!isNaN(val) && val >= 0.01) {
       if (val !== baselinePrice) setBaselinePrice(val);
     } else {
