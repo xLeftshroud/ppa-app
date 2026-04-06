@@ -73,6 +73,33 @@ export interface SimulateRequest {
   selected_new_price_per_litre: number | null;
 }
 
+export interface PredictPointsRequest {
+  dataset_id: string;
+  product_sku_code: number | null;
+  customer: string;
+  promotion_indicator: 0 | 1;
+  week: number;
+  top_brand: string | null;
+  flavor_internal: string | null;
+  pack_type_internal: string | null;
+  pack_size_internal: number | null;
+  units_per_package_internal: number | null;
+  baseline_price: number | null;
+  selected_price: number | null;
+}
+
+export interface PointPrediction {
+  price_per_litre: number;
+  predicted_volume: number;
+  elasticity: number;
+}
+
+export interface PredictPointsResponse {
+  baseline: PointPrediction | null;
+  selected: PointPrediction | null;
+  arc_elasticity: number | null;
+}
+
 export interface SkuLookupRequest {
   dataset_id: string;
   top_brand: string;
