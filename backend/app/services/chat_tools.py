@@ -196,7 +196,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "optimize_revenue",
-            "description": "Find the price that maximizes revenue (price x volume) for the given configuration. Scans the full demand curve. Returns optimal price, volume, revenue, and comparison to baseline revenue.",
+            "description": "Find the price that maximizes revenue (price x volume) for the given configuration. Optionally restrict the search to a price range (e.g. p5–p95 from get_price_range). Returns optimal price, volume, revenue, and comparison to baseline revenue.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -210,6 +210,8 @@ TOOL_DEFINITIONS: list[dict] = [
                     "pack_size_internal": {"type": "integer"},
                     "units_per_package_internal": {"type": "integer"},
                     "baseline_price_per_litre": {"type": "number"},
+                    "min_price": {"type": "number", "minimum": 0.01, "description": "Minimum price to search (e.g. p5 value). Omit for no lower bound."},
+                    "max_price": {"type": "number", "minimum": 0.01, "description": "Maximum price to search (e.g. p95 value). Omit for no upper bound."},
                 },
                 "required": ["customer", "promotion_indicator", "week"],
             },
@@ -244,37 +246,125 @@ TOOL_DEFINITIONS: list[dict] = [
             },
         },
     },
+    # ── Individual simulation param tools ──
     {
         "type": "function",
         "function": {
-            "name": "set_simulation_params",
-            "description": "Set one or more simulation parameters in the UI. Only include fields you want to change.",
+            "name": "set_promotion",
+            "description": "Set the promotion indicator in the UI (0 = no promotion, 1 = promotion).",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "promotion_indicator": {"type": "integer", "enum": [0, 1]},
-                    "week": {"type": "integer", "minimum": 1, "maximum": 52},
-                    "baseline_price_per_litre": {"type": "number", "minimum": 0.01},
-                    "price_change_pct": {"type": "number", "minimum": -100, "maximum": 100},
-                    "new_price_per_litre": {"type": "number", "minimum": 0.01},
-                },
+                "properties": {"value": {"type": "integer", "enum": [0, 1]}},
+                "required": ["value"],
             },
         },
     },
     {
         "type": "function",
         "function": {
-            "name": "set_sku_attributes",
-            "description": "Set SKU attributes (brand, flavor, pack type, pack size, units per package) in the UI without selecting a specific SKU code.",
+            "name": "set_week",
+            "description": "Set the week number (1–52) in the UI.",
             "parameters": {
                 "type": "object",
-                "properties": {
-                    "brand": {"type": "string"},
-                    "flavor": {"type": "string"},
-                    "pack_type": {"type": "string"},
-                    "pack_size": {"type": "integer"},
-                    "units_pkg": {"type": "integer"},
-                },
+                "properties": {"value": {"type": "integer", "minimum": 1, "maximum": 52}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_baseline_price",
+            "description": "Set the baseline price override (GBP per litre) in the UI.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "number", "minimum": 0.01}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_price_change_pct",
+            "description": "Set the price change percentage in the UI and switch to percentage input mode.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "number", "minimum": -100, "maximum": 100}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_new_price",
+            "description": "Set a direct price (GBP per litre) in the UI and switch to direct price input mode.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "number", "minimum": 0.01}},
+                "required": ["value"],
+            },
+        },
+    },
+    # ── Individual SKU attribute tools ──
+    {
+        "type": "function",
+        "function": {
+            "name": "set_brand",
+            "description": "Set the brand (top_brand) in the UI without selecting a specific SKU.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "string"}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_flavor",
+            "description": "Set the flavor (flavor_internal) in the UI without selecting a specific SKU.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "string"}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_pack_type",
+            "description": "Set the pack type (pack_type_internal) in the UI without selecting a specific SKU.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "string"}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_pack_size",
+            "description": "Set the pack size (pack_size_internal) in the UI without selecting a specific SKU.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "integer"}},
+                "required": ["value"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_units_pkg",
+            "description": "Set the units per package (units_per_package_internal) in the UI without selecting a specific SKU.",
+            "parameters": {
+                "type": "object",
+                "properties": {"value": {"type": "integer"}},
+                "required": ["value"],
             },
         },
     },
@@ -568,7 +658,11 @@ def execute_tool(
 
         elif tool_name == "optimize_revenue":
             req = _build_sim_request(tool_args, app_state, virtual_state)
-            result = optimize_revenue(req)
+            result = optimize_revenue(
+                req,
+                min_price=tool_args.get("min_price"),
+                max_price=tool_args.get("max_price"),
+            )
             return json.dumps(result), ui_actions
 
         # ── UI tools ──
@@ -596,30 +690,66 @@ def execute_tool(
             virtual_state["customer"] = customer
             return json.dumps({"ok": True, "customer": customer}), ui_actions
 
-        elif tool_name == "set_simulation_params":
-            params = {}
-            if "promotion_indicator" in tool_args:
-                params["promotion"] = tool_args["promotion_indicator"]
-                virtual_state["promotion_indicator"] = tool_args["promotion_indicator"]
-            if "week" in tool_args:
-                params["week"] = tool_args["week"]
-                virtual_state["week"] = tool_args["week"]
-            if "baseline_price_per_litre" in tool_args:
-                params["baseline_price"] = tool_args["baseline_price_per_litre"]
-            if "price_change_pct" in tool_args:
-                params["price_change_pct"] = tool_args["price_change_pct"]
-            if "new_price_per_litre" in tool_args:
-                params["new_price"] = tool_args["new_price_per_litre"]
-            ui_actions.append(UIAction(action="set_simulation_params", params=params))
-            return json.dumps({"ok": True, "params_set": list(params.keys())}), ui_actions
+        # ── Individual simulation param tools ──
 
-        elif tool_name == "set_sku_attributes":
-            params = {}
-            for k in ("brand", "flavor", "pack_type", "pack_size", "units_pkg"):
-                if k in tool_args:
-                    params[k] = tool_args[k]
-            ui_actions.append(UIAction(action="set_sku_attributes", params=params))
-            return json.dumps({"ok": True, "attrs_set": list(params.keys())}), ui_actions
+        elif tool_name == "set_promotion":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_promotion", params={"value": val}))
+            virtual_state["promotion_indicator"] = val
+            return json.dumps({"ok": True, "promotion_indicator": val}), ui_actions
+
+        elif tool_name == "set_week":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_week", params={"value": val}))
+            virtual_state["week"] = val
+            return json.dumps({"ok": True, "week": val}), ui_actions
+
+        elif tool_name == "set_baseline_price":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_baseline_price", params={"value": val}))
+            return json.dumps({"ok": True, "baseline_price": val}), ui_actions
+
+        elif tool_name == "set_price_change_pct":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_price_change_pct", params={"value": val}))
+            return json.dumps({"ok": True, "price_change_pct": val}), ui_actions
+
+        elif tool_name == "set_new_price":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_new_price", params={"value": val}))
+            return json.dumps({"ok": True, "new_price": val}), ui_actions
+
+        # ── Individual SKU attribute tools ──
+
+        elif tool_name == "set_brand":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_brand", params={"value": val}))
+            virtual_state["top_brand"] = val
+            return json.dumps({"ok": True, "brand": val}), ui_actions
+
+        elif tool_name == "set_flavor":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_flavor", params={"value": val}))
+            virtual_state["flavor_internal"] = val
+            return json.dumps({"ok": True, "flavor": val}), ui_actions
+
+        elif tool_name == "set_pack_type":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_pack_type", params={"value": val}))
+            virtual_state["pack_type_internal"] = val
+            return json.dumps({"ok": True, "pack_type": val}), ui_actions
+
+        elif tool_name == "set_pack_size":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_pack_size", params={"value": val}))
+            virtual_state["pack_size_internal"] = val
+            return json.dumps({"ok": True, "pack_size": val}), ui_actions
+
+        elif tool_name == "set_units_pkg":
+            val = tool_args["value"]
+            ui_actions.append(UIAction(action="set_units_pkg", params={"value": val}))
+            virtual_state["units_per_package_internal"] = val
+            return json.dumps({"ok": True, "units_pkg": val}), ui_actions
 
         elif tool_name == "clear_selections":
             ui_actions.append(UIAction(action="clear_selections", params={}))

@@ -3,43 +3,54 @@ import { useAppStore } from "@/store/useAppStore";
 import type { SkuItem } from "@/types/api";
 import type { CustomPlot } from "@/store/useAppStore";
 
-export function applyUIAction(action: UIAction) {
+export function applyUIAction(action: UIAction, skuItems?: SkuItem[]) {
   const store = useAppStore.getState();
 
   switch (action.action) {
     case "set_sku": {
-      const { sku, attrs } = action.params as { sku: number; attrs: SkuItem | null };
-      store.setSelectedSku(sku, attrs ?? null);
+      const { sku } = action.params as { sku: number };
+      const item = skuItems?.find((s) => s.product_sku_code === sku) ?? null;
+      store.setSelectedSku(sku, item);
       break;
     }
     case "set_customer": {
       store.setCustomer(action.params.customer as string);
       break;
     }
-    case "set_simulation_params": {
-      const p = action.params;
-      if (p.promotion !== undefined) store.setPromotion(p.promotion as 0 | 1);
-      if (p.week !== undefined) store.setWeek(p.week as number);
-      if (p.baseline_price !== undefined) store.setBaselinePrice(p.baseline_price as number | null);
-      if (p.price_change_pct !== undefined) {
-        store.setPriceInputMode("percentage");
-        store.setPriceChangePct(p.price_change_pct as number);
-      }
-      if (p.new_price !== undefined) {
-        store.setPriceInputMode("direct");
-        store.setNewPrice(p.new_price as number | null);
-      }
+    // ── Individual simulation param actions ──
+    case "set_promotion":
+      store.setPromotion(action.params.value as 0 | 1);
       break;
-    }
-    case "set_sku_attributes": {
-      const p = action.params;
-      if (p.brand !== undefined) store.setAttrBrand(p.brand as string | null);
-      if (p.flavor !== undefined) store.setAttrFlavor(p.flavor as string | null);
-      if (p.pack_type !== undefined) store.setAttrPackType(p.pack_type as string | null);
-      if (p.pack_size !== undefined) store.setAttrPackSize(p.pack_size as number | null);
-      if (p.units_pkg !== undefined) store.setAttrUnitsPkg(p.units_pkg as number | null);
+    case "set_week":
+      store.setWeek(action.params.value as number);
       break;
-    }
+    case "set_baseline_price":
+      store.setBaselinePrice(action.params.value as number | null);
+      break;
+    case "set_price_change_pct":
+      store.setPriceInputMode("percentage");
+      store.setPriceChangePct(action.params.value as number);
+      break;
+    case "set_new_price":
+      store.setPriceInputMode("direct");
+      store.setNewPrice(action.params.value as number | null);
+      break;
+    // ── Individual SKU attribute actions ──
+    case "set_brand":
+      store.setAttrBrand(action.params.value as string | null);
+      break;
+    case "set_flavor":
+      store.setAttrFlavor(action.params.value as string | null);
+      break;
+    case "set_pack_type":
+      store.setAttrPackType(action.params.value as string | null);
+      break;
+    case "set_pack_size":
+      store.setAttrPackSize(action.params.value as number | null);
+      break;
+    case "set_units_pkg":
+      store.setAttrUnitsPkg(action.params.value as number | null);
+      break;
     case "clear_selections": {
       store.clearSkuAttrs();
       break;

@@ -8,7 +8,11 @@ from app.services.simulation_service import run_simulation
 logger = logging.getLogger(__name__)
 
 
-def optimize_revenue(req: SimulateRequest) -> dict:
+def optimize_revenue(
+    req: SimulateRequest,
+    min_price: float | None = None,
+    max_price: float | None = None,
+) -> dict:
     """Scan the demand curve from run_simulation and find price maximizing revenue (price * volume)."""
     resp = run_simulation(req)
 
@@ -17,6 +21,10 @@ def optimize_revenue(req: SimulateRequest) -> dict:
     best_revenue = 0.0
 
     for pt in resp.curve:
+        if min_price is not None and pt.price_per_litre < min_price:
+            continue
+        if max_price is not None and pt.price_per_litre > max_price:
+            continue
         revenue = pt.price_per_litre * pt.predicted_volume_units
         if revenue > best_revenue:
             best_revenue = revenue
@@ -34,5 +42,7 @@ def optimize_revenue(req: SimulateRequest) -> dict:
         "baseline_revenue": baseline_revenue,
         "baseline_price": resp.baseline.price_per_litre if resp.baseline else None,
         "baseline_volume": resp.baseline.volume_units if resp.baseline else None,
+        "search_min_price": min_price,
+        "search_max_price": max_price,
         "warnings": resp.warnings,
     }
