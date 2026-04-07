@@ -1,9 +1,11 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useChatStore } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
 import { fetchChatProviders, sendChatMessage, type AppStateSnapshot } from "@/api/chat";
 import { applyUIAction } from "./useChatActions";
+import { useSkus } from "./useCatalog";
+import type { SkuItem } from "@/types/api";
 
 function buildSnapshot(): AppStateSnapshot {
   const s = useAppStore.getState();
@@ -56,6 +58,11 @@ export function useChat(runSimulation?: () => void) {
     setSelectedProvider,
     clearHistory,
   } = useChatStore();
+
+  const datasetId = useAppStore((s) => s.datasetId);
+  const { data: skuData } = useSkus(datasetId);
+  const skuItemsRef = useRef<SkuItem[] | undefined>(undefined);
+  skuItemsRef.current = skuData?.items;
 
   const providersQuery = useQuery({
     queryKey: ["chatProviders"],
@@ -125,7 +132,7 @@ export function useChat(runSimulation?: () => void) {
           if (action.action === "trigger_simulation") {
             shouldTriggerSim = true;
           } else {
-            applyUIAction(action);
+            applyUIAction(action, skuItemsRef.current);
           }
         }
 
