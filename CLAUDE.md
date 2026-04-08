@@ -39,7 +39,7 @@ cd frontend && npm install && npm run dev
 ## Key Business Rules
 
 - **Baseline**: Filter dataset by `sku + customer`, take row with `max(yearweek)` → baseline_price = price_per_litre, baseline_volume = nielsen_total_volume
-- **Curve**: 41 points from -100% to +100% (step 5%) centered on baseline_price; prices clamped to min 0.01; deduplicated; batch predicted via `pipeline.predict(df)`
+- **Curve**: Continuous prices from £0.001 to £10.000 (step £0.001); batch predicted via `pipeline.predict(df)`
 - **Elasticity**: Local ±1% center-difference at selected price point. Falls back to one-sided if P- clamped to 0.01
 - **Week features**: `week_sin = sin(2*pi*week/52)`, `week_cos = cos(2*pi*week/52)`
 
