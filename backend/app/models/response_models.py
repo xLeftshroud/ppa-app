@@ -34,7 +34,6 @@ class BaselineResponse(BaseModel):
 
 
 class CurvePoint(BaseModel):
-    price_change_pct: float
     price_per_litre: float
     predicted_volume_units: float
 
