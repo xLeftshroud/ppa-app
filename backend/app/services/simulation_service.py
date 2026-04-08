@@ -149,12 +149,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     curve_points: list[CurvePoint] = []
     for price in all_prices:
         vol = price_to_vol[round(price, 4)]
-        if baseline_price is not None and baseline_price > 0:
-            pct = (price / baseline_price - 1) * 100
-        else:
-            pct = 0.0
         curve_points.append(CurvePoint(
-            price_change_pct=round(pct, 4),
             price_per_litre=round(price, 4),
             predicted_volume_units=round(vol, 2),
         ))
