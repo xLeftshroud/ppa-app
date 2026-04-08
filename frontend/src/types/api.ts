@@ -27,7 +27,6 @@ export interface BaselineResponse {
 }
 
 export interface CurvePoint {
-  price_change_pct: number;
   price_per_litre: number;
   predicted_volume_units: number;
 }

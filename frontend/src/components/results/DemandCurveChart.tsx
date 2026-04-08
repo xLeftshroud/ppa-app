@@ -175,16 +175,10 @@ export function DemandCurveChart({
         const curveParam = params.find((p) => p.seriesIndex === 0);
         if (!curveParam) return "";
         const [price, volume] = curveParam.data;
-        const curvePoint = curve.find(
-          (p: CurvePoint) => Math.abs(p.price_per_litre - price) < 0.0001
-        );
-        const pct = curvePoint?.price_change_pct ?? 0;
         const confidence = getConfidenceLabel(price, priceRange);
         const lines = [
           `<strong>Price:</strong> ${price.toFixed(4)}`,
           `<strong>Volume:</strong> ${Math.round(volume).toLocaleString()}`,
-          `<strong>Change:</strong> ${pct > 0 ? "+" : ""}${pct.toFixed(4)}%`,
-          ...(selected ? [`<strong>Elasticity:</strong> ${selected.elasticity.toFixed(4)}`] : []),
         ];
         if (confidence) {
           const color = getConfidenceColor(confidence);
