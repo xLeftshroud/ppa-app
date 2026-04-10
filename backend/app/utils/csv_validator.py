@@ -5,7 +5,6 @@ from typing import Any
 
 import pandas as pd
 
-from app.models.request_models import VALID_CUSTOMERS
 from app.utils.error_handler import CsvParseError, CsvSchemaInvalid
 
 REQUIRED_COLUMNS = [
@@ -85,14 +84,6 @@ def validate_csv(raw_bytes: bytes) -> pd.DataFrame:
         raise CsvSchemaInvalid("CSV validation failed", errors)
 
     # Phase 5: value-level validation
-    bad_cust = ~df["customer"].isin(VALID_CUSTOMERS)
-    for row in df.index[bad_cust].tolist()[:10]:
-        errors.append({
-            "row": int(row) + 2,
-            "column": "customer",
-            "reason": f"must be one of {VALID_CUSTOMERS}",
-        })
-
     bad_promo = ~df["promotion_indicator"].isin([0, 1])
     for row in df.index[bad_promo].tolist()[:10]:
         errors.append({"row": int(row) + 2, "column": "promotion_indicator", "reason": "must be 0 or 1"})

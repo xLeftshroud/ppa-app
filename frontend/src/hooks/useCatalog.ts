@@ -33,10 +33,10 @@ export function usePackTypes(datasetId: string | null) {
   });
 }
 
-export function useCustomers() {
+export function useCustomers(datasetId: string | null) {
   return useQuery({
-    queryKey: ["customers"],
-    queryFn: fetchCustomers,
-    staleTime: Infinity,
+    queryKey: ["customers", datasetId],
+    queryFn: () => fetchCustomers(datasetId!),
+    enabled: !!datasetId,
   });
 }

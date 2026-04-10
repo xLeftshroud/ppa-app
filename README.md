@@ -113,7 +113,7 @@ Upload CSV files with these required columns (no missing values):
 |--------|------|-------------|
 | POST | `/v1/datasets/upload` | Upload CSV dataset |
 | GET | `/v1/catalog/skus?dataset_id=` | List SKUs with attributes |
-| GET | `/v1/catalog/customers` | List valid customers |
+| GET | `/v1/catalog/customers?dataset_id=` | List customers from the uploaded dataset |
 | GET | `/v1/catalog/promotions` | List promotion values |
 | GET | `/v1/baseline?dataset_id=&product_sku_code=&customer=` | Get baseline price/volume |
 | POST | `/v1/simulate` | Run simulation (curve + elasticity) |

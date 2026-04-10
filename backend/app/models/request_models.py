@@ -5,9 +5,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 
-VALID_CUSTOMERS = ["L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"]
-
-
 class SimulateRequest(BaseModel):
     dataset_id: str
     product_sku_code: Optional[int] = None

@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Query
 
-from app.models.request_models import VALID_CUSTOMERS
 from app.models.response_models import SkuItem, SkuListResponse
 from app.services.catalog_service import (
     get_distinct_brands,
+    get_distinct_customers,
     get_distinct_flavors,
     get_distinct_pack_types,
     get_sku_catalog,
@@ -23,8 +23,9 @@ def list_skus(dataset_id: str = Query(...)):
 
 
 @router.get("/catalog/customers")
-def list_customers():
-    return VALID_CUSTOMERS
+def list_customers(dataset_id: str = Query(...)):
+    df = get_dataset(dataset_id)
+    return get_distinct_customers(df)
 
 
 @router.get("/catalog/brands")

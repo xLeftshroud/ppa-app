@@ -7,10 +7,11 @@ import uuid
 from typing import Any
 
 from app.models.chat_models import AppStateSnapshot, ChatCustomPlotSummary, UIAction
-from app.models.request_models import SimulateRequest, VALID_CUSTOMERS
+from app.models.request_models import SimulateRequest
 from app.services.baseline_service import get_baseline
 from app.services.catalog_service import (
     get_distinct_brands,
+    get_distinct_customers,
     get_distinct_flavors,
     get_distinct_pack_types,
     get_sku_attributes,
@@ -62,7 +63,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "product_sku_code": {"type": "integer", "description": "The SKU code"},
-                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                    "customer": {"type": "string"},
                 },
                 "required": ["product_sku_code", "customer"],
             },
@@ -77,7 +78,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "product_sku_code": {"type": "integer"},
-                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                    "customer": {"type": "string"},
                     "promotion_indicator": {"type": "integer", "enum": [0, 1]},
                     "week": {"type": "integer", "minimum": 1, "maximum": 52},
                     "top_brand": {"type": "string"},
@@ -119,7 +120,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "list_customers",
-            "description": "List all valid customer names.",
+            "description": "List all distinct customer names in the uploaded dataset.",
             "parameters": {"type": "object", "properties": {}},
         },
     },
@@ -153,7 +154,7 @@ TOOL_DEFINITIONS: list[dict] = [
                         "properties": {
                             "label": {"type": "string", "description": "Human-readable label"},
                             "product_sku_code": {"type": "integer"},
-                            "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                            "customer": {"type": "string"},
                             "promotion_indicator": {"type": "integer", "enum": [0, 1]},
                             "week": {"type": "integer", "minimum": 1, "maximum": 52},
                             "top_brand": {"type": "string"},
@@ -173,7 +174,7 @@ TOOL_DEFINITIONS: list[dict] = [
                         "properties": {
                             "label": {"type": "string", "description": "Human-readable label"},
                             "product_sku_code": {"type": "integer"},
-                            "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                            "customer": {"type": "string"},
                             "promotion_indicator": {"type": "integer", "enum": [0, 1]},
                             "week": {"type": "integer", "minimum": 1, "maximum": 52},
                             "top_brand": {"type": "string"},
@@ -201,7 +202,7 @@ TOOL_DEFINITIONS: list[dict] = [
                 "type": "object",
                 "properties": {
                     "product_sku_code": {"type": "integer"},
-                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                    "customer": {"type": "string"},
                     "promotion_indicator": {"type": "integer", "enum": [0, 1]},
                     "week": {"type": "integer", "minimum": 1, "maximum": 52},
                     "top_brand": {"type": "string"},
@@ -240,7 +241,7 @@ TOOL_DEFINITIONS: list[dict] = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "customer": {"type": "string", "enum": VALID_CUSTOMERS},
+                    "customer": {"type": "string"},
                 },
                 "required": ["customer"],
             },
@@ -620,7 +621,12 @@ def execute_tool(
             return json.dumps({"skus": skus[:50], "total": len(skus)}), ui_actions
 
         elif tool_name == "list_customers":
-            return json.dumps({"customers": VALID_CUSTOMERS}), ui_actions
+            dataset_id = app_state.dataset_id
+            if not dataset_id:
+                return json.dumps({"error": "No dataset uploaded."}), ui_actions
+            df = get_dataset(dataset_id)
+            customers = get_distinct_customers(df)
+            return json.dumps({"customers": customers}), ui_actions
 
         elif tool_name == "list_brands":
             dataset_id = app_state.dataset_id
