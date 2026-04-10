@@ -99,15 +99,6 @@ export interface PredictPointsResponse {
   arc_elasticity: number | null;
 }
 
-export interface SkuLookupRequest {
-  dataset_id: string;
-  top_brand: string;
-  flavor_internal: string;
-  pack_type_internal: string;
-  pack_size_internal: number;
-  units_per_package_internal: number;
-}
-
 export interface ApiErrorBody {
   code: string;
   message: string;

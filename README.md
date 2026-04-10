@@ -115,7 +115,6 @@ Upload CSV files with these required columns (no missing values):
 | GET | `/v1/catalog/skus?dataset_id=` | List SKUs with attributes |
 | GET | `/v1/catalog/customers` | List valid customers |
 | GET | `/v1/catalog/promotions` | List promotion values |
-| POST | `/v1/catalog/sku-lookup` | Reverse-lookup SKU by attributes |
 | GET | `/v1/baseline?dataset_id=&product_sku_code=&customer=` | Get baseline price/volume |
 | POST | `/v1/simulate` | Run simulation (curve + elasticity) |
 | GET | `/v1/chat/providers` | Get enabled chat providers and default selection |

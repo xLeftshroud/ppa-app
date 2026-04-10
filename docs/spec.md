@@ -207,8 +207,6 @@ GET /v1/catalog/promotions
 
 - 返回 `[0,1]`
 
-（可选）`POST /v1/catalog/sku-lookup`：用属性组合反查 SKU（唯一）
-
 ### 4.3 Baseline 查询
 
 ```

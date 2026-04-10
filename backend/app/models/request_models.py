@@ -37,12 +37,3 @@ class PredictPointsRequest(BaseModel):
     units_per_package_internal: Optional[int] = None
     baseline_price: Optional[float] = Field(None, ge=0.01)
     selected_price: Optional[float] = Field(None, ge=0.01)
-
-
-class SkuLookupRequest(BaseModel):
-    dataset_id: str
-    top_brand: str
-    flavor_internal: str
-    pack_type_internal: str
-    pack_size_internal: int
-    units_per_package_internal: int
