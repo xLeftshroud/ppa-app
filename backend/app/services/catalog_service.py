@@ -36,3 +36,7 @@ def get_distinct_flavors(df: pd.DataFrame) -> list[str]:
 
 def get_distinct_pack_types(df: pd.DataFrame) -> list[str]:
     return sorted(df["pack_type_internal"].dropna().unique().tolist())
+
+
+def get_distinct_customers(df: pd.DataFrame) -> list[str]:
+    return sorted(df["customer"].dropna().unique().tolist())

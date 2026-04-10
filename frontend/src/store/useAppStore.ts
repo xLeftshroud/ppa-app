@@ -122,7 +122,7 @@ export const useAppStore = create<AppState>()((set) => ({
   ...initialState,
 
   setDataset: (id, rows, skus) =>
-    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalBaseline: null, baselinePrice: null, simulateResult: null, cachedCurve: null, cachedCurveFingerprint: null }),
+    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, selectedCustomer: null, historicalBaseline: null, baselinePrice: null, simulateResult: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   setSelectedSku: (sku, attrs) =>
     set(sku != null

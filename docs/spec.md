@@ -47,7 +47,7 @@
 用户上传 CSV（UTF-8、逗号分隔、最大 50MB、**无缺失值**）。必须包含且仅需校验这些列：
 
 - `product_sku_code` (int)
-- `customer` (enum，5 选 1)
+- `customer` (str，来源于上传 dataset 中出现的不同值)
 - `yearweek` (int，用于找最新 baseline；模型推理不一定用，但必须存在)
 - `nielsen_total_volume` (int，单位：units)
 - `promotion_indicator` (int，0/1)
@@ -76,8 +76,7 @@
 
 以下变量必须由用户指定（因为同 SKU 可对应多个 customer/促销/季节）：
 
-- `customer`：从固定列表选择
-   `{"L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"}`
+- `customer`：从上传 dataset 中出现的不同 customer 值选择（由后端 `GET /v1/catalog/customers?dataset_id=...` 返回）
 - `promotion_indicator`：0/1
 - `week`：1–52（不是 month，不是 yearweek）
   - 后端特征计算（必须严格用此公式）：
@@ -199,7 +198,7 @@ GET /v1/catalog/skus?dataset_id=...
 GET /v1/catalog/customers
 ```
 
-- 返回固定 enum 五项
+- 返回上传 dataset 中 customer 列的去重值
 
 ```
 GET /v1/catalog/promotions
@@ -323,7 +322,7 @@ GET /v1/baseline?dataset_id=...&product_sku_code=...&customer=...
 - CSV 上传区（拖拽 + 上传按钮）→ 成功后显示 dataset_id、行数、SKU 数
 - SKU 选择（下拉）+ 属性只读展示
 - 允许用户用属性组合反查 SKU（可选 Tab：By SKU / By Attributes）
-- customer 下拉（5 选 1）
+- customer 下拉（来自上传 dataset 的不同 customer 值）
 - promotion_indicator 切换（0/1）
 - week 输入（1–52，NumberInput）
 - baseline_price（自动填充，允许用户手动 override）
