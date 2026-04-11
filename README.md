@@ -36,6 +36,35 @@ The frontend defaults to `http://localhost:8000` as the API base. Override with:
 VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
+## Testing
+
+### Backend (pytest + FastAPI TestClient)
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest -v
+```
+
+### Frontend unit/component (Vitest + React Testing Library + MSW)
+
+```bash
+cd frontend
+npm install
+npm run test:run       # headless
+npm run test:ui        # interactive UI
+```
+
+### End-to-end (Playwright, real backend + Vite)
+
+```bash
+cd frontend
+npx playwright install chromium   # first time only
+npm run test:e2e
+```
+
+CI runs all three layers automatically on push/PR via `.github/workflows/test.yml`.
+
 ## Environment Configuration
 
 The backend reads settings from `backend/.env` (see `backend/.env.example` for all options):
