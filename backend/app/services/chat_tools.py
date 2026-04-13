@@ -7,7 +7,7 @@ import uuid
 from typing import Any
 
 from app.models.chat_models import AppStateSnapshot, ChatCustomPlotSummary, UIAction
-from app.models.request_models import SimulateRequest
+from app.models.request_models import PredictPointsRequest, SimulateRequest
 from app.services.baseline_service import get_baseline
 from app.services.catalog_service import (
     get_distinct_brands,
@@ -20,7 +20,7 @@ from app.services.catalog_service import (
 from app.services.dataset_service import get_dataset
 from app.services.optimization_service import optimize_revenue
 from app.services.price_range_service import get_price_range
-from app.services.simulation_service import run_simulation
+from app.services.simulation_service import predict_points, run_simulation
 from app.utils.error_handler import AppError, BaselineNotFound
 
 logger = logging.getLogger(__name__)
@@ -88,6 +88,30 @@ TOOL_DEFINITIONS: list[dict] = [
                     "units_per_package_internal": {"type": "integer"},
                     "baseline_price_per_litre": {"type": "number", "minimum": 0.01},
                     "selected_price_change_pct": {"type": "number", "minimum": -100, "maximum": 100},
+                    "selected_new_price_per_litre": {"type": "number", "minimum": 0.01},
+                },
+                "required": ["customer", "promotion_indicator", "week"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "predict_at_price",
+            "description": "Lightweight prediction at 1-2 price points WITHOUT regenerating the demand curve. Returns predicted volume, elasticity, revenue, and delta at the baseline price and/or a selected price. Use this instead of run_simulation when you only need volume/elasticity at specific prices and the curve is not needed. Much faster than run_simulation.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_sku_code": {"type": "integer"},
+                    "customer": {"type": "string"},
+                    "promotion_indicator": {"type": "integer", "enum": [0, 1]},
+                    "week": {"type": "integer", "minimum": 1, "maximum": 52},
+                    "top_brand": {"type": "string"},
+                    "flavor_internal": {"type": "string"},
+                    "pack_type_internal": {"type": "string"},
+                    "pack_size_internal": {"type": "integer"},
+                    "units_per_package_internal": {"type": "integer"},
+                    "baseline_price_per_litre": {"type": "number", "minimum": 0.01},
                     "selected_new_price_per_litre": {"type": "number", "minimum": 0.01},
                 },
                 "required": ["customer", "promotion_indicator", "week"],
@@ -507,6 +531,39 @@ def _build_sim_request(
     )
 
 
+def _build_predict_request(
+    args: dict,
+    app_state: AppStateSnapshot,
+    virtual_state: dict,
+) -> PredictPointsRequest:
+    """Build a PredictPointsRequest merging tool args with current app/virtual state."""
+    dataset_id = app_state.dataset_id
+    if not dataset_id:
+        raise ValueError("No dataset uploaded. Please upload a CSV first.")
+
+    def _resolve(key: str, app_val: Any) -> Any:
+        if key in args and args[key] is not None:
+            return args[key]
+        if key in virtual_state and virtual_state[key] is not None:
+            return virtual_state[key]
+        return app_val
+
+    return PredictPointsRequest(
+        dataset_id=dataset_id,
+        product_sku_code=_resolve("product_sku_code", app_state.selected_sku),
+        customer=_resolve("customer", app_state.customer),
+        promotion_indicator=_resolve("promotion_indicator", app_state.promotion),
+        week=_resolve("week", app_state.week),
+        top_brand=_resolve("top_brand", app_state.brand),
+        flavor_internal=_resolve("flavor_internal", app_state.flavor),
+        pack_type_internal=_resolve("pack_type_internal", app_state.pack_type),
+        pack_size_internal=_resolve("pack_size_internal", app_state.pack_size),
+        units_per_package_internal=_resolve("units_per_package_internal", app_state.units_pkg),
+        baseline_price=args.get("baseline_price_per_litre", app_state.baseline_price_input),
+        selected_price=args.get("selected_new_price_per_litre"),
+    )
+
+
 def _get_virtual_custom_plots(
     app_state: AppStateSnapshot,
     virtual_state: dict,
@@ -603,6 +660,36 @@ def execute_tool(
                     "price_change_pct": resp.selected.price_change_pct,
                 }
             summary["curve_points_count"] = len(resp.curve)
+            return json.dumps(summary), ui_actions
+
+        elif tool_name == "predict_at_price":
+            req = _build_predict_request(tool_args, app_state, virtual_state)
+            resp = predict_points(req)
+            summary: dict[str, Any] = {}
+            if resp.baseline:
+                summary["baseline"] = {
+                    "price_per_litre": resp.baseline.price_per_litre,
+                    "predicted_volume_units": resp.baseline.predicted_volume,
+                    "elasticity": resp.baseline.elasticity,
+                }
+            if resp.selected:
+                summary["selected"] = {
+                    "price_per_litre": resp.selected.price_per_litre,
+                    "predicted_volume_units": resp.selected.predicted_volume,
+                    "elasticity": resp.selected.elasticity,
+                }
+            if resp.baseline and resp.selected:
+                bl_vol = resp.baseline.predicted_volume
+                sel_vol = resp.selected.predicted_volume
+                bl_price = resp.baseline.price_per_litre
+                sel_price = resp.selected.price_per_litre
+                if bl_vol != 0:
+                    summary["delta_volume_units"] = round(sel_vol - bl_vol, 2)
+                    summary["delta_volume_pct"] = round((sel_vol - bl_vol) / bl_vol, 6)
+                summary["baseline_revenue"] = round(bl_price * bl_vol, 2)
+                summary["selected_revenue"] = round(sel_price * sel_vol, 2)
+            if resp.arc_elasticity is not None:
+                summary["arc_elasticity"] = resp.arc_elasticity
             return json.dumps(summary), ui_actions
 
         elif tool_name == "get_price_range":
