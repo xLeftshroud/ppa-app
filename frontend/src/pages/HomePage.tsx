@@ -76,7 +76,7 @@ export function HomePage() {
     <>
       <div
         className={cn(
-          "px-4 py-6 transition-[padding] duration-200 ease-in-out md:[--chat-inline-width:280px] lg:[--chat-inline-width:320px] xl:[--chat-inline-width:360px] 2xl:[--chat-inline-width:400px]",
+          "px-4 py-3 transition-[padding] duration-200 ease-in-out md:[--chat-inline-width:280px] lg:[--chat-inline-width:320px] xl:[--chat-inline-width:360px] 2xl:[--chat-inline-width:400px]",
           isChatOpen ? "md:px-4 lg:px-5 xl:px-6 2xl:px-8" : "md:px-6 xl:px-8 2xl:px-10",
         )}
       >
@@ -96,10 +96,10 @@ export function HomePage() {
                   isChatOpen ? "xl:w-[360px] 2xl:w-[380px]" : "lg:w-[380px]",
                 )}
               >
-                <div className="space-y-3">
-                  <h2 className="mb-3 text-lg font-semibold">SKU Selection</h2>
+                <div className="space-y-2">
+                  <h2 className="mb-1 text-lg font-semibold">SKU Selection</h2>
                   <SkuSelector />
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <SearchableAttrSelect label="Brand" options={brands} value={attrBrand} onChange={setAttrBrand} />
                     <SearchableAttrSelect label="Flavor" options={flavors} value={attrFlavor} onChange={setAttrFlavor} />
                     <PackTypeSelect options={packTypes} value={attrPackType} onChange={setAttrPackType} />
@@ -113,16 +113,18 @@ export function HomePage() {
                   </div>
                 </div>
 
-                <div className="space-y-4 border-t pt-4">
-                  <h2 className="mb-1 text-lg font-semibold">Prediction Controls</h2>
-                  <CustomerSelect />
+                <div className="space-y-2 border-t pt-2">
+                  <h2 className="mb-0.5 text-lg font-semibold">Prediction Controls</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    <CustomerSelect />
+                    <WeekInput />
+                  </div>
                   <PromotionToggle />
-                  <WeekInput />
                 </div>
 
-                <div className="border-t pt-4">
-                  <h2 className="mb-3 text-lg font-semibold">Baseline & Price</h2>
-                  <div className="space-y-4">
+                <div className="border-t pt-2">
+                  <h2 className="mb-1 text-lg font-semibold">Baseline & Price</h2>
+                  <div className="space-y-2">
                     <BaselinePriceInput />
                     <PriceSlider />
                   </div>
