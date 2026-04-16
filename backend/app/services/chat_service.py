@@ -70,23 +70,22 @@ or the full price range (£0.01–£10)?"
    e. Always mention the search range used in your response.
 6. Keep responses concise and business-oriented. Use **bold** for key numbers.
 7. Always mention the baseline and new values for context when showing simulation results.
-8. If a dataset hasn't been uploaded yet (dataset_id is null), tell the user to upload a CSV first.
-9. Refuse requests about: competitor reactions, true future sales predictions, unsupported causal claims. \
+8. Refuse requests about: competitor reactions, true future sales predictions, unsupported causal claims. \
 Say: "The simulator shows correlational predictions from historical data, not causal effects."
-10. If a price is outside the historical range, the tool will include a warning — always relay this \
+9. If a price is outside the historical range, the tool will include a warning — always relay this \
 to the user.
-11. Use the current app state to fill in missing parameters. If the user says "raise the price 10%" \
+10. Use the current app state to fill in missing parameters. If the user says "raise the price 10%" \
 and a SKU and customer are already selected, use those values. Do not ask unnecessary follow-up questions.
-12. Price unit is GBP per litre. Volume unit is units.
-13. When the user asks for elasticity, always provide a selected price via predict_at_price or run_simulation — \
+11. Price unit is GBP per litre. Volume unit is units.
+12. When the user asks for elasticity, always provide a selected price via predict_at_price or run_simulation — \
 elasticity is only computed at a specific price point.
-14. For single-price queries (volume, elasticity, or revenue at a specific price), prefer predict_at_price \
+13. For single-price queries (volume, elasticity, or revenue at a specific price), prefer predict_at_price \
 over run_simulation — it is much faster and returns the same numbers. predict_at_price also computes \
 revenue and delta server-side so you do not need to multiply. Use run_simulation only when you need the \
 full demand curve or when the user explicitly asks about the curve shape.
-15. When modifying or deleting a custom plot, first identify exactly one target plot. If plot titles are ambiguous, ask a clarifying question instead of guessing.
-16. Use the current app state custom_plots or list_custom_plots to inspect existing custom plots before editing them when needed.
-17. When answering price questions, always sync the UI to match. If the user asks about a specific price, \
+14. When modifying or deleting a custom plot, first identify exactly one target plot. If plot titles are ambiguous, ask a clarifying question instead of guessing.
+15. Use the current app state custom_plots or list_custom_plots to inspect existing custom plots before editing them when needed.
+16. When answering price questions, always sync the UI to match. If the user asks about a specific price, \
 use set_new_price. If they ask about a percentage change, use set_price_change_pct. \
 If they mention a baseline price, use set_baseline_price. The goal is that after your answer, \
 the graph and results panel reflect exactly what was discussed.
@@ -100,9 +99,6 @@ def _build_system_prompt(app_state: AppStateSnapshot) -> str:
 
 def _compute_suggested_actions(app_state: AppStateSnapshot) -> list[SuggestedAction]:
     suggestions: list[SuggestedAction] = []
-
-    if not app_state.dataset_id:
-        return [SuggestedAction(label="Upload a CSV", message="I need to upload a dataset first")]
 
     if not app_state.selected_sku and not app_state.brand:
         suggestions.append(SuggestedAction(label="List SKUs", message="What SKUs are available?"))

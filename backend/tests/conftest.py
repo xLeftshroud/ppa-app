@@ -14,8 +14,7 @@ from fastapi.testclient import TestClient
 from sklearn.pipeline import Pipeline
 
 from app.ml.dummy_pipeline import DummyDemandModel
-from app.services import dataset_service, pipeline_service
-from app.utils.csv_validator import validate_csv
+from app.services import pipeline_service, price_range_service
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SAMPLE_CSV = FIXTURES_DIR / "sample.csv"
@@ -51,49 +50,55 @@ def _force_dummy_pipeline():
     yield
 
 
-@pytest.fixture(autouse=True)
-def _reset_dataset_store():
-    """Each test gets a fresh in-memory dataset store."""
-    dataset_service._store.clear()
-    yield
-    dataset_service._store.clear()
-
-
 @pytest.fixture
 def sample_csv_bytes() -> bytes:
     return SAMPLE_CSV.read_bytes()
 
 
 @pytest.fixture
-def sample_df(sample_csv_bytes: bytes) -> pd.DataFrame:
-    return validate_csv(sample_csv_bytes)
+def sample_df() -> pd.DataFrame:
+    return pd.read_csv(SAMPLE_CSV)
 
 
 @pytest.fixture
-def dataset_id(sample_df: pd.DataFrame) -> str:
-    return dataset_service.store_dataset(sample_df)
-
-
-@pytest.fixture
-def client() -> TestClient:
+def client(sample_df: pd.DataFrame) -> TestClient:
     # Import here so _force_dummy_pipeline has already patched pipeline_service
     # before app.main's lifespan tries to run.
     from app.main import app
 
-    # Bypass lifespan (which would call load_pipeline / load_training_csv)
     with TestClient(app) as c:
-        # Re-apply dummy pipeline in case lifespan ran and overwrote it.
+        # The TestClient context manager runs the real lifespan, which calls
+        # load_pipeline() and load_training_csv(). Override both with test values
+        # *after* lifespan so the real training CSV doesn't leak into tests.
         pipeline_service._pipeline = Pipeline([("model", DummyDemandModel())])
         pipeline_service._metadata = dict(_TEST_METADATA)
+        price_range_service._training_df = sample_df
+        price_range_service._cache = _build_price_range_cache(sample_df)
+        price_range_service._loaded = True
         yield c
 
+    # Clean up the singleton so tests don't leak state.
+    price_range_service._training_df = None
+    price_range_service._cache = {}
+    price_range_service._loaded = False
 
-@pytest.fixture
-def uploaded_client(client: TestClient, sample_csv_bytes: bytes) -> tuple[TestClient, str]:
-    """Client with a dataset already uploaded via the real endpoint."""
-    resp = client.post(
-        "/v1/datasets/upload",
-        files={"file": ("sample.csv", sample_csv_bytes, "text/csv")},
-    )
-    assert resp.status_code == 200, resp.text
-    return client, resp.json()["dataset_id"]
+
+def _build_price_range_cache(df: pd.DataFrame) -> dict:
+    import numpy as np
+
+    cache: dict = {}
+    sub = df[["product_sku_code", "price_per_litre"]].dropna()
+    sub = sub[sub["price_per_litre"] > 0]
+    for sku, group in sub.groupby("product_sku_code"):
+        prices = group["price_per_litre"].values
+        cache[int(sku)] = {
+            "sku": int(sku),
+            "metric": "price_per_litre",
+            "n": len(prices),
+            "p1": round(float(np.percentile(prices, 1)), 6),
+            "p5": round(float(np.percentile(prices, 5)), 6),
+            "p50": round(float(np.percentile(prices, 50)), 6),
+            "p95": round(float(np.percentile(prices, 95)), 6),
+            "p99": round(float(np.percentile(prices, 99)), 6),
+        }
+    return cache

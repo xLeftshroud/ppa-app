@@ -16,7 +16,6 @@ class ChatCustomPlotSummary(BaseModel):
 
 
 class AppStateSnapshot(BaseModel):
-    dataset_id: str | None = None
     selected_sku: int | None = None
     sku_description: str | None = None
     brand: str | None = None

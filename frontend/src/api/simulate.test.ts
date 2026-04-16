@@ -8,7 +8,6 @@ import type { SimulateRequest } from "@/types/api";
 const BASE = "http://localhost:8000";
 
 const body: SimulateRequest = {
-  dataset_id: "fake-dataset-id",
   product_sku_code: 100001,
   customer: "L2_TESCO",
   promotion_indicator: 0,

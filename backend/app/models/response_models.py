@@ -5,14 +5,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-class UploadResponse(BaseModel):
-    dataset_id: str
-    row_count: int
-    sku_count: int
-    customer_values: list[str]
-    message: str = "uploaded"
-
-
 class SkuItem(BaseModel):
     product_sku_code: int
     material_medium_description: str

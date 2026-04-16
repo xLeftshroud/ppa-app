@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 
-def _body(dataset_id: str, **overrides) -> dict:
+def _body(**overrides) -> dict:
     body = {
-        "dataset_id": dataset_id,
         "product_sku_code": 100001,
         "customer": "L2_TESCO",
         "promotion_indicator": 0,
@@ -21,9 +20,8 @@ def _body(dataset_id: str, **overrides) -> dict:
     return body
 
 
-def test_simulate_happy_path(uploaded_client) -> None:
-    client, dataset_id = uploaded_client
-    resp = client.post("/v1/simulate", json=_body(dataset_id))
+def test_simulate_happy_path(client) -> None:
+    resp = client.post("/v1/simulate", json=_body())
     assert resp.status_code == 200, resp.text
     body = resp.json()
 
@@ -36,15 +34,8 @@ def test_simulate_happy_path(uploaded_client) -> None:
     assert isinstance(body["warnings"], list)
 
 
-def test_simulate_unknown_dataset_id(client) -> None:
-    resp = client.post("/v1/simulate", json=_body("does-not-exist"))
-    assert resp.status_code == 422
-    assert resp.json()["error"]["code"] == "VALIDATION_ERROR"
-
-
-def test_simulate_no_price_input_returns_curve_only(uploaded_client) -> None:
-    client, dataset_id = uploaded_client
-    body = _body(dataset_id)
+def test_simulate_no_price_input_returns_curve_only(client) -> None:
+    body = _body()
     body.pop("selected_new_price_per_litre")
     resp = client.post("/v1/simulate", json=body)
     assert resp.status_code == 200

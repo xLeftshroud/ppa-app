@@ -10,7 +10,6 @@ export interface ChatCustomPlotSummary {
 }
 
 export interface AppStateSnapshot {
-  dataset_id: string | null;
   selected_sku: number | null;
   sku_description: string | null;
   brand: string | null;

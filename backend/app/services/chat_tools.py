@@ -502,9 +502,6 @@ def _build_sim_request(
     virtual_state: dict,
 ) -> SimulateRequest:
     """Build a SimulateRequest merging tool args with current app/virtual state."""
-    dataset_id = app_state.dataset_id
-    if not dataset_id:
-        raise ValueError("No dataset uploaded. Please upload a CSV first.")
 
     # Merge: tool args > virtual state > app state
     def _resolve(key: str, app_val: Any) -> Any:
@@ -515,7 +512,6 @@ def _build_sim_request(
         return app_val
 
     return SimulateRequest(
-        dataset_id=dataset_id,
         product_sku_code=_resolve("product_sku_code", app_state.selected_sku),
         customer=_resolve("customer", app_state.customer),
         promotion_indicator=_resolve("promotion_indicator", app_state.promotion),
@@ -537,9 +533,6 @@ def _build_predict_request(
     virtual_state: dict,
 ) -> PredictPointsRequest:
     """Build a PredictPointsRequest merging tool args with current app/virtual state."""
-    dataset_id = app_state.dataset_id
-    if not dataset_id:
-        raise ValueError("No dataset uploaded. Please upload a CSV first.")
 
     def _resolve(key: str, app_val: Any) -> Any:
         if key in args and args[key] is not None:
@@ -549,7 +542,6 @@ def _build_predict_request(
         return app_val
 
     return PredictPointsRequest(
-        dataset_id=dataset_id,
         product_sku_code=_resolve("product_sku_code", app_state.selected_sku),
         customer=_resolve("customer", app_state.customer),
         promotion_indicator=_resolve("promotion_indicator", app_state.promotion),
@@ -629,10 +621,7 @@ def execute_tool(
 
     try:
         if tool_name == "get_baseline":
-            dataset_id = app_state.dataset_id
-            if not dataset_id:
-                return json.dumps({"error": "No dataset uploaded."}), ui_actions
-            df = get_dataset(dataset_id)
+            df = get_dataset()
             result = get_baseline(df, tool_args["product_sku_code"], tool_args["customer"])
             return json.dumps(result), ui_actions
 
@@ -699,27 +688,18 @@ def execute_tool(
             return json.dumps(result), ui_actions
 
         elif tool_name == "list_skus":
-            dataset_id = app_state.dataset_id
-            if not dataset_id:
-                return json.dumps({"error": "No dataset uploaded."}), ui_actions
-            df = get_dataset(dataset_id)
+            df = get_dataset()
             skus = get_sku_catalog(df)
             # Cap at 50 to keep token usage reasonable
             return json.dumps({"skus": skus[:50], "total": len(skus)}), ui_actions
 
         elif tool_name == "list_customers":
-            dataset_id = app_state.dataset_id
-            if not dataset_id:
-                return json.dumps({"error": "No dataset uploaded."}), ui_actions
-            df = get_dataset(dataset_id)
+            df = get_dataset()
             customers = get_distinct_customers(df)
             return json.dumps({"customers": customers}), ui_actions
 
         elif tool_name == "list_brands":
-            dataset_id = app_state.dataset_id
-            if not dataset_id:
-                return json.dumps({"error": "No dataset uploaded."}), ui_actions
-            df = get_dataset(dataset_id)
+            df = get_dataset()
             brands = get_distinct_brands(df)
             return json.dumps({"brands": brands}), ui_actions
 
@@ -762,11 +742,8 @@ def execute_tool(
 
         elif tool_name == "set_sku":
             sku_code = tool_args["product_sku_code"]
-            dataset_id = app_state.dataset_id
-            attrs = None
-            if dataset_id:
-                df = get_dataset(dataset_id)
-                attrs = get_sku_attributes(df, sku_code)
+            df = get_dataset()
+            attrs = get_sku_attributes(df, sku_code)
             ui_actions.append(UIAction(action="set_sku", params={"sku": sku_code, "attrs": attrs}))
             virtual_state["product_sku_code"] = sku_code
             if attrs:

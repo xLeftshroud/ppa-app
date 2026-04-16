@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 
 class SimulateRequest(BaseModel):
-    dataset_id: str
     product_sku_code: Optional[int] = None
     customer: Optional[str] = None
     promotion_indicator: Literal[0, 1] = 0
@@ -22,7 +21,6 @@ class SimulateRequest(BaseModel):
 
 
 class PredictPointsRequest(BaseModel):
-    dataset_id: str
     product_sku_code: Optional[int] = None
     customer: Optional[str] = None
     promotion_indicator: Literal[0, 1] = 0

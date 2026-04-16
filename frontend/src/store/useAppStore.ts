@@ -10,11 +10,6 @@ export type CustomPlot = {
 };
 
 interface AppState {
-  // Dataset
-  datasetId: string | null;
-  rowCount: number | null;
-  skuCount: number | null;
-
   // SKU
   selectedSku: number | null;
   skuAttributes: SkuItem | null;
@@ -64,7 +59,6 @@ interface AppState {
   customPlots: CustomPlot[];
 
   // Actions
-  setDataset: (id: string, rows: number, skus: number) => void;
   setSelectedSku: (sku: number | null, attrs: SkuItem | null) => void;
   setAttrBrand: (v: string | null) => void;
   setAttrFlavor: (v: string | null) => void;
@@ -92,9 +86,6 @@ interface AppState {
 }
 
 const initialState = {
-  datasetId: null,
-  rowCount: null,
-  skuCount: null,
   selectedSku: null,
   skuAttributes: null,
   attrBrand: null,
@@ -120,9 +111,6 @@ const initialState = {
 
 export const useAppStore = create<AppState>()((set) => ({
   ...initialState,
-
-  setDataset: (id, rows, skus) =>
-    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, selectedCustomer: null, historicalBaseline: null, baselinePrice: null, simulateResult: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   setSelectedSku: (sku, attrs) =>
     set(sku != null

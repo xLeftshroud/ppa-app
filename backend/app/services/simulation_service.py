@@ -58,7 +58,7 @@ def _compute_elasticity(
 
 
 def run_simulation(req: SimulateRequest) -> SimulateResponse:
-    df = get_dataset(req.dataset_id)
+    df = get_dataset()
     pipeline = get_pipeline()
     metadata = get_metadata()
     metadata_features: list[str] = metadata.get("features", [])
@@ -247,7 +247,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
 def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
     """Lightweight prediction at 1-2 price points without regenerating the full curve."""
-    df = get_dataset(req.dataset_id)
+    df = get_dataset()
     pipeline = get_pipeline()
     metadata = get_metadata()
     metadata_features: list[str] = metadata.get("features", [])

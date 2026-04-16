@@ -3,19 +3,10 @@ import type {
   BaselineResponse,
   CurvePoint,
   SimulateResponse,
-  UploadResponse,
   SkuListResponse,
 } from "@/types/api";
 
 const BASE = "http://localhost:8000";
-
-export const fakeUploadResponse: UploadResponse = {
-  dataset_id: "fake-dataset-id",
-  row_count: 10,
-  sku_count: 3,
-  customer_values: ["L2_TESCO", "L2_ASDA"],
-  message: "uploaded",
-};
 
 export const fakeBaseline: BaselineResponse = {
   yearweek: 202522,
@@ -64,7 +55,6 @@ export const fakeSkuList: SkuListResponse = {
 };
 
 export const handlers = [
-  http.post(`${BASE}/v1/datasets/upload`, () => HttpResponse.json(fakeUploadResponse)),
   http.get(`${BASE}/v1/catalog/skus`, () => HttpResponse.json(fakeSkuList)),
   http.get(`${BASE}/v1/catalog/customers`, () => HttpResponse.json(["L2_TESCO", "L2_ASDA"])),
   http.get(`${BASE}/v1/catalog/brands`, () => HttpResponse.json(["FANTA", "SPRITE"])),

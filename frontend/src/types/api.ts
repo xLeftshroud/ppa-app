@@ -1,11 +1,3 @@
-export interface UploadResponse {
-  dataset_id: string;
-  row_count: number;
-  sku_count: number;
-  customer_values: string[];
-  message: string;
-}
-
 export interface SkuItem {
   product_sku_code: number;
   material_medium_description: string;
@@ -57,7 +49,6 @@ export interface SimulateResponse {
 }
 
 export interface SimulateRequest {
-  dataset_id: string;
   product_sku_code: number | null;
   customer: string | null;
   promotion_indicator: 0 | 1;
@@ -73,7 +64,6 @@ export interface SimulateRequest {
 }
 
 export interface PredictPointsRequest {
-  dataset_id: string;
   product_sku_code: number | null;
   customer: string | null;
   promotion_indicator: 0 | 1;

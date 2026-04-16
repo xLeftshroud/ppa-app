@@ -10,7 +10,6 @@ import type { SkuItem } from "@/types/api";
 function buildSnapshot(): AppStateSnapshot {
   const s = useAppStore.getState();
   return {
-    dataset_id: s.datasetId,
     selected_sku: s.selectedSku,
     sku_description: s.skuAttributes?.material_medium_description ?? null,
     brand: s.attrBrand,
@@ -59,8 +58,7 @@ export function useChat(runSimulation?: () => void) {
     clearHistory,
   } = useChatStore();
 
-  const datasetId = useAppStore((s) => s.datasetId);
-  const { data: skuData } = useSkus(datasetId);
+  const { data: skuData } = useSkus();
   const skuItemsRef = useRef<SkuItem[] | undefined>(undefined);
   skuItemsRef.current = skuData?.items;
 

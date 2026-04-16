@@ -1,42 +1,37 @@
 import { useQuery } from "@tanstack/react-query";
 import { fetchSkus, fetchCustomers, fetchBrands, fetchFlavors, fetchPackTypes } from "@/api/catalog";
 
-export function useSkus(datasetId: string | null) {
+export function useSkus() {
   return useQuery({
-    queryKey: ["skus", datasetId],
-    queryFn: () => fetchSkus(datasetId!),
-    enabled: !!datasetId,
+    queryKey: ["skus"],
+    queryFn: fetchSkus,
   });
 }
 
-export function useBrands(datasetId: string | null) {
+export function useBrands() {
   return useQuery({
-    queryKey: ["brands", datasetId],
-    queryFn: () => fetchBrands(datasetId!),
-    enabled: !!datasetId,
+    queryKey: ["brands"],
+    queryFn: fetchBrands,
   });
 }
 
-export function useFlavors(datasetId: string | null) {
+export function useFlavors() {
   return useQuery({
-    queryKey: ["flavors", datasetId],
-    queryFn: () => fetchFlavors(datasetId!),
-    enabled: !!datasetId,
+    queryKey: ["flavors"],
+    queryFn: fetchFlavors,
   });
 }
 
-export function usePackTypes(datasetId: string | null) {
+export function usePackTypes() {
   return useQuery({
-    queryKey: ["packTypes", datasetId],
-    queryFn: () => fetchPackTypes(datasetId!),
-    enabled: !!datasetId,
+    queryKey: ["packTypes"],
+    queryFn: fetchPackTypes,
   });
 }
 
-export function useCustomers(datasetId: string | null) {
+export function useCustomers() {
   return useQuery({
-    queryKey: ["customers", datasetId],
-    queryFn: () => fetchCustomers(datasetId!),
-    enabled: !!datasetId,
+    queryKey: ["customers"],
+    queryFn: fetchCustomers,
   });
 }
