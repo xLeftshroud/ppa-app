@@ -10,7 +10,6 @@ const BASE = "http://localhost:8000";
 function seedStore() {
   const s = useAppStore.getState();
   s.reset();
-  s.setDataset("fake-dataset-id", 10, 3);
   s.setCustomer("L2_TESCO");
   s.setWeek(20);
   s.setBaselinePrice(1.5);
@@ -22,15 +21,14 @@ describe("useSimulate", () => {
     useAppStore.getState().reset();
   });
 
-  it("canSimulate is false without a dataset", () => {
+  it("canSimulate is true by default", () => {
     const { result } = renderHook(() => useSimulate());
-    expect(result.current.canSimulate).toBe(false);
+    expect(result.current.canSimulate).toBe(true);
   });
 
   it("runNow fetches and stores the result", async () => {
     seedStore();
     const { result } = renderHook(() => useSimulate());
-    expect(result.current.canSimulate).toBe(true);
 
     await act(async () => {
       await result.current.runNow();

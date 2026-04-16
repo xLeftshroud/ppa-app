@@ -11,10 +11,9 @@ router = APIRouter(tags=["baseline"])
 
 @router.get("/baseline", response_model=BaselineResponse)
 def fetch_baseline(
-    dataset_id: str = Query(...),
     product_sku_code: int = Query(...),
     customer: str = Query(...),
 ):
-    df = get_dataset(dataset_id)
+    df = get_dataset()
     bl = get_baseline(df, product_sku_code, customer)
     return BaselineResponse(**bl)

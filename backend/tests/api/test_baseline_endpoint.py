@@ -2,12 +2,10 @@
 from __future__ import annotations
 
 
-def test_baseline_happy_path(uploaded_client) -> None:
-    client, dataset_id = uploaded_client
+def test_baseline_happy_path(client) -> None:
     resp = client.get(
         "/v1/baseline",
         params={
-            "dataset_id": dataset_id,
             "product_sku_code": 100001,
             "customer": "L2_TESCO",
         },
@@ -19,12 +17,10 @@ def test_baseline_happy_path(uploaded_client) -> None:
     assert abs(body["price_per_litre"] - 1.55) < 1e-6
 
 
-def test_baseline_not_found(uploaded_client) -> None:
-    client, dataset_id = uploaded_client
+def test_baseline_not_found(client) -> None:
     resp = client.get(
         "/v1/baseline",
         params={
-            "dataset_id": dataset_id,
             "product_sku_code": 999999,
             "customer": "L2_TESCO",
         },

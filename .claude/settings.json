@@ -14,7 +14,8 @@
       "Bash(grep -E \"\\\\.\\(ts|tsx|py\\)$\")",
       "Bash(xargs grep:*)",
       "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -20 \"{}\"')",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }

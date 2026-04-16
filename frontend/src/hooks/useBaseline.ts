@@ -5,15 +5,14 @@ import { useAppStore } from "@/store/useAppStore";
 import { useEffect } from "react";
 
 export function useBaseline() {
-  const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
   const selectedCustomer = useAppStore((s) => s.selectedCustomer);
   const setHistoricalBaseline = useAppStore((s) => s.setHistoricalBaseline);
 
   const query = useQuery({
-    queryKey: ["baseline", datasetId, selectedSku, selectedCustomer],
-    queryFn: () => fetchBaseline(datasetId!, selectedSku!, selectedCustomer!),
-    enabled: !!datasetId && selectedSku != null && !!selectedCustomer,
+    queryKey: ["baseline", selectedSku, selectedCustomer],
+    queryFn: () => fetchBaseline(selectedSku!, selectedCustomer!),
+    enabled: selectedSku != null && !!selectedCustomer,
     retry: (failureCount, error) => {
       // Don't retry 404s — baseline simply doesn't exist
       if (error instanceof ApiError && error.code === "BASELINE_NOT_FOUND") return false;

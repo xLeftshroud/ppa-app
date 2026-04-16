@@ -8,7 +8,7 @@ from app.services.pipeline_service import load_pipeline
 from app.services.price_range_service import load_training_csv
 from app.utils.error_handler import RequestIdMiddleware, register_exception_handlers
 from app.utils.logging_config import setup_logging
-from app.routers import datasets, catalog, baseline, simulate, predict_points, price_range, scatter, chat
+from app.routers import catalog, baseline, simulate, predict_points, price_range, scatter, chat
 
 
 setup_logging()
@@ -34,7 +34,6 @@ app.add_middleware(
 
 register_exception_handlers(app)
 
-app.include_router(datasets.router, prefix="/v1")
 app.include_router(catalog.router, prefix="/v1")
 app.include_router(baseline.router, prefix="/v1")
 app.include_router(simulate.router, prefix="/v1")

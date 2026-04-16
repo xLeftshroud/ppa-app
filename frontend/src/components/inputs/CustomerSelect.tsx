@@ -6,10 +6,9 @@ import { Label } from "@/components/ui/label";
 const NONE_VALUE = "__none__";
 
 export function CustomerSelect() {
-  const datasetId = useAppStore((s) => s.datasetId);
   const selectedCustomer = useAppStore((s) => s.selectedCustomer);
   const setCustomer = useAppStore((s) => s.setCustomer);
-  const { data: customers = [] } = useCustomers(datasetId);
+  const { data: customers = [] } = useCustomers();
 
   return (
     <div className="space-y-1.5">

@@ -6,7 +6,6 @@ import type { SimulateRequest, PredictPointsRequest, SimulateResponse } from "@/
 
 /** Build a fingerprint string from all curve-affecting features (everything except prices). */
 function buildFingerprint(s: {
-  datasetId: string;
   selectedSku: number | null;
   selectedCustomer: string | null;
   promotionIndicator: 0 | 1;
@@ -18,7 +17,6 @@ function buildFingerprint(s: {
   attrUnitsPkg: number | null;
 }): string {
   return JSON.stringify([
-    s.datasetId,
     s.selectedSku,
     s.selectedCustomer,
     s.promotionIndicator,
@@ -33,7 +31,6 @@ function buildFingerprint(s: {
 
 export function useSimulate() {
   const {
-    datasetId,
     selectedSku,
     selectedCustomer,
     promotionIndicator,
@@ -59,14 +56,11 @@ export function useSimulate() {
   const [error, setError] = useState<Error | null>(null);
   const runCounter = useRef(0);
 
-  const canSimulate = !!datasetId;
+  const canSimulate = true;
 
   const runNow = useCallback(async () => {
-    if (!datasetId) return;
-
     const canUsePercentage = baselinePrice != null;
     const currentFingerprint = buildFingerprint({
-      datasetId,
       selectedSku,
       selectedCustomer,
       promotionIndicator,
@@ -90,7 +84,6 @@ export function useSimulate() {
       if (curveChanged) {
         // Full simulation: regenerate curve + predict points + price range
         const params: SimulateRequest = {
-          dataset_id: datasetId,
           product_sku_code: selectedSku,
           customer: selectedCustomer,
           promotion_indicator: promotionIndicator,
@@ -124,7 +117,6 @@ export function useSimulate() {
         }
 
         const pointsReq: PredictPointsRequest = {
-          dataset_id: datasetId,
           product_sku_code: selectedSku,
           customer: selectedCustomer,
           promotion_indicator: promotionIndicator,
@@ -183,7 +175,7 @@ export function useSimulate() {
       }
     }
   }, [
-    datasetId, selectedSku, selectedCustomer, promotionIndicator, week,
+    selectedSku, selectedCustomer, promotionIndicator, week,
     attrBrand, attrFlavor, attrPackType, attrPackSize, attrUnitsPkg,
     baselinePrice, priceInputMode, selectedPriceChangePct, selectedNewPrice,
     cachedCurve, cachedCurveFingerprint,

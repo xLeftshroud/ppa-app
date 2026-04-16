@@ -19,7 +19,6 @@ describe("useAppStore", () => {
 
   it("has expected initial state", () => {
     const s = useAppStore.getState();
-    expect(s.datasetId).toBeNull();
     expect(s.selectedSku).toBeNull();
     expect(s.promotionIndicator).toBe(0);
     expect(s.priceInputMode).toBe("direct");
