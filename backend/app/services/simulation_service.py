@@ -13,11 +13,11 @@ from app.models.response_models import (
     SelectedResult,
     SimulateResponse,
 )
-from app.services.baseline_service import get_baseline
 from app.services.catalog_service import get_sku_attributes
 from app.services.dataset_service import get_dataset
+from app.services.historical_price_service import get_historical_price
 from app.services.pipeline_service import get_metadata, get_pipeline
-from app.utils.error_handler import BaselineNotFound, InferenceError, ValidationError
+from app.utils.error_handler import HistoricalPriceNotFound, InferenceError, ValidationError
 from app.utils.feature_builder import build_feature_df
 
 logger = logging.getLogger(__name__)
@@ -82,13 +82,13 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         if sku_row is not None:
             attrs.setdefault("material_medium_description", sku_row["material_medium_description"])
 
-    # --- Baseline (optional) ---
+    # --- Historical price reference (optional) ---
     bl_raw: Optional[dict] = None
     if req.product_sku_code is not None and req.customer is not None:
         try:
-            bl_raw = get_baseline(df, req.product_sku_code, req.customer)
-        except BaselineNotFound:
-            logger.info("No baseline found for SKU %s / customer %s", req.product_sku_code, req.customer)
+            bl_raw = get_historical_price(df, req.product_sku_code, req.customer)
+        except HistoricalPriceNotFound:
+            logger.info("No historical price found for SKU %s / customer %s", req.product_sku_code, req.customer)
 
     baseline_price: Optional[float] = None
     baseline_volume: Optional[int] = None
@@ -220,7 +220,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     # --- Warnings ---
     warnings: list[str] = []
     if bl_raw is None and req.product_sku_code is not None:
-        warnings.append("No baseline data found for this SKU + customer combination")
+        warnings.append("No historical price data found for this SKU + customer combination")
     if has_price_input:
         price_meta = metadata.get("price_per_litre", {})
         p1 = price_meta.get("p1", 0.0)

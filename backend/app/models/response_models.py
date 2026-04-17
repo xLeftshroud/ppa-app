@@ -19,6 +19,12 @@ class SkuListResponse(BaseModel):
     items: list[SkuItem]
 
 
+class HistoricalPriceResponse(BaseModel):
+    yearweek: int
+    price_per_litre: float
+    volume_units: int
+
+
 class BaselineResponse(BaseModel):
     yearweek: int
     price_per_litre: float

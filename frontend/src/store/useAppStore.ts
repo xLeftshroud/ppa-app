@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SkuItem, SimulateResponse, BaselineResponse, CurvePoint, PriceRange } from "@/types/api";
+import type { SkuItem, SimulateResponse, HistoricalPriceResponse, CurvePoint, PriceRange } from "@/types/api";
 
 export type CustomPlot = {
   id: string;
@@ -26,8 +26,8 @@ interface AppState {
   promotionIndicator: 0 | 1;
   week: number | null;
 
-  // Baseline
-  historicalBaseline: BaselineResponse | null;
+  // Historical reference + user's simulation baseline
+  historicalPrice: HistoricalPriceResponse | null;
   baselinePrice: number | null;
 
   // Price
@@ -68,7 +68,7 @@ interface AppState {
   setCustomer: (c: string | null) => void;
   setPromotion: (p: 0 | 1) => void;
   setWeek: (w: number | null) => void;
-  setHistoricalBaseline: (bl: BaselineResponse | null) => void;
+  setHistoricalPrice: (hp: HistoricalPriceResponse | null) => void;
   setBaselinePrice: (price: number | null) => void;
   setPriceInputMode: (mode: "direct" | "percentage") => void;
   setPriceChangePct: (pct: number) => void;
@@ -96,7 +96,7 @@ const initialState = {
   selectedCustomer: null,
   promotionIndicator: 0 as const,
   week: null,
-  historicalBaseline: null,
+  historicalPrice: null,
   baselinePrice: null,
   priceInputMode: "direct" as const,
   selectedPriceChangePct: 0,
@@ -122,7 +122,7 @@ export const useAppStore = create<AppState>()((set) => ({
           attrPackType: attrs?.pack_type_internal ?? null,
           attrPackSize: attrs?.pack_size_internal ?? null,
           attrUnitsPkg: attrs?.units_per_package_internal ?? null,
-          historicalBaseline: null,
+          historicalPrice: null,
           baselinePrice: null,
           cachedCurve: null,
           cachedCurveFingerprint: null,
@@ -140,12 +140,12 @@ export const useAppStore = create<AppState>()((set) => ({
   setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   setCustomer: (c) =>
-    set({ selectedCustomer: c, historicalBaseline: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
+    set({ selectedCustomer: c, historicalPrice: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   setPromotion: (p) => set({ promotionIndicator: p, cachedCurve: null, cachedCurveFingerprint: null }),
   setWeek: (w) => set({ week: w, cachedCurve: null, cachedCurveFingerprint: null }),
 
-  setHistoricalBaseline: (bl) => set({ historicalBaseline: bl }),
+  setHistoricalPrice: (hp) => set({ historicalPrice: hp }),
   setBaselinePrice: (price) => set({ baselinePrice: price }),
 
   setPriceInputMode: (mode) => set(mode === "percentage" ? { priceInputMode: mode, selectedNewPrice: null } : { priceInputMode: mode }),
@@ -168,7 +168,7 @@ export const useAppStore = create<AppState>()((set) => ({
   })),
   setCachedCurve: (curve, fingerprint) => set({ cachedCurve: curve, cachedCurveFingerprint: fingerprint }),
 
-  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalBaseline: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
+  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalPrice: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   addCustomPlot: (plot) => set((s) => ({ customPlots: [...s.customPlots, plot] })),
   updateCustomPlot: (id, patch) => set((s) => ({

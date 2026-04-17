@@ -27,8 +27,9 @@ class AppStateSnapshot(BaseModel):
     promotion: Literal[0, 1] = 0
     week: int | None = None
     baseline_price: float | None = None
-    baseline_volume: int | None = None
-    baseline_price_input: float | None = None
+    historical_price: float | None = None
+    historical_volume: int | None = None
+    historical_yearweek: int | None = None
     price_input_mode: str = "direct"
     price_change_pct: float = 0
     selected_new_price: float | None = None

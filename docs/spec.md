@@ -83,16 +83,18 @@
     - `week_sin = sin(2π * week / 52)`
     - `week_cos = cos(2π * week / 52)`
 
-### 2.4 baseline 规则（必须严格）
+### 2.4 historical price 规则（必须严格）
 
-baseline 受 customer 影响：
+historical price 受 customer 影响：
 
-- 在上传 dataset 中，按 `product_sku_code == X AND customer == Y` 过滤
-- 取 `yearweek` 最大的那一行作为最新 baseline row
-- baseline_price = `price_per_litre`
-- baseline_volume = `nielsen_total_volume`（用于显示 Δ）
+- 在 dataset 中，按 `product_sku_code == X AND customer == Y` 过滤
+- 取 `yearweek` 最大的那一行作为最新 historical row
+- historical_price = `price_per_litre`
+- historical_volume = `nielsen_total_volume`（参考值，用于显示 Δ）
 
-若找不到 baseline：返回 `404 BASELINE_NOT_FOUND`（统一错误格式见后文）。
+若找不到 historical price：返回 `404 HISTORICAL_PRICE_NOT_FOUND`（统一错误格式见后文）。
+
+注：historical price 仅作为参考数据。simulation 的 baseline 来自用户手动输入（`baselinePrice`），两者是独立概念。
 
 ### 2.5 价格与约束
 
@@ -206,13 +208,13 @@ GET /v1/catalog/promotions
 
 - 返回 `[0,1]`
 
-### 4.3 Baseline 查询
+### 4.3 Historical price 查询
 
 ```
-GET /v1/baseline?dataset_id=...&product_sku_code=...&customer=...
+GET /v1/historical-price?product_sku_code=...&customer=...
 ```
 
-- 返回 baseline_price、baseline_volume、baseline_yearweek
+- 返回 historical_price（`price_per_litre`）、historical_volume（`volume_units`）、historical_yearweek（`yearweek`）
 
 ### 4.4 场景模拟（曲线 + 当前点 + elasticity）
 
@@ -305,7 +307,7 @@ GET /v1/baseline?dataset_id=...&product_sku_code=...&customer=...
 
 - `CSV_PARSE_ERROR` → 400
 - `CSV_SCHEMA_INVALID` → 422
-- `BASELINE_NOT_FOUND` → 404
+- `HISTORICAL_PRICE_NOT_FOUND` → 404
 - `INFERENCE_ERROR` → 500
 - `VALIDATION_ERROR`（请求体字段非法，例如 week 不在 1-52、price<0.01）→ 422
 

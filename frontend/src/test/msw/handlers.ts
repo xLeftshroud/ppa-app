@@ -1,14 +1,21 @@
 import { http, HttpResponse } from "msw";
 import type {
-  BaselineResponse,
   CurvePoint,
+  HistoricalPriceResponse,
   SimulateResponse,
+  SimulationBaseline,
   SkuListResponse,
 } from "@/types/api";
 
 const BASE = "http://localhost:8000";
 
-export const fakeBaseline: BaselineResponse = {
+export const fakeHistoricalPrice: HistoricalPriceResponse = {
+  yearweek: 202522,
+  price_per_litre: 1.55,
+  volume_units: 7900,
+};
+
+const fakeSimBaseline: SimulationBaseline = {
   yearweek: 202522,
   price_per_litre: 1.55,
   volume_units: 7900,
@@ -26,7 +33,7 @@ export const fakeSimulate: SimulateResponse = {
     features_version: "v1",
   },
   warnings: [],
-  baseline: fakeBaseline,
+  baseline: fakeSimBaseline,
   baseline_elasticity: -1.8,
   selected: {
     price_change_pct: 20,
@@ -60,7 +67,7 @@ export const handlers = [
   http.get(`${BASE}/v1/catalog/brands`, () => HttpResponse.json(["FANTA", "SPRITE"])),
   http.get(`${BASE}/v1/catalog/flavors`, () => HttpResponse.json(["ORANGE", "LEMON"])),
   http.get(`${BASE}/v1/catalog/pack-types`, () => HttpResponse.json(["CAN", "BOTTLE"])),
-  http.get(`${BASE}/v1/baseline`, () => HttpResponse.json(fakeBaseline)),
+  http.get(`${BASE}/v1/historical-price`, () => HttpResponse.json(fakeHistoricalPrice)),
   http.post(`${BASE}/v1/simulate`, () => HttpResponse.json(fakeSimulate)),
   http.post(`${BASE}/v1/predict-points`, () =>
     HttpResponse.json({

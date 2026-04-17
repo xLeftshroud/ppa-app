@@ -1,15 +1,15 @@
 import { useAppStore } from "@/store/useAppStore";
-import { useBaseline } from "@/hooks/useBaseline";
+import { useHistoricalPrice } from "@/hooks/useHistoricalPrice";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState, useEffect } from "react";
 
 export function BaselinePriceInput() {
-  const historicalBaseline = useAppStore((s) => s.historicalBaseline);
+  const historicalPrice = useAppStore((s) => s.historicalPrice);
   const baselinePrice = useAppStore((s) => s.baselinePrice);
   const setBaselinePrice = useAppStore((s) => s.setBaselinePrice);
 
-  const { isLoading, error, is404 } = useBaseline();
+  const { isLoading, error, is404 } = useHistoricalPrice();
 
   // Local draft for editing
   const [draft, setDraft] = useState(baselinePrice != null ? String(baselinePrice) : "");
@@ -44,7 +44,7 @@ export function BaselinePriceInput() {
       {isLoading ? (
         <div className="h-10 bg-muted animate-pulse rounded-md" />
       ) : hasRealError ? (
-        <p className="text-xs text-destructive">Baseline not available</p>
+        <p className="text-xs text-destructive">Historical price not available</p>
       ) : (
         <>
           {is404 && (
@@ -67,9 +67,9 @@ export function BaselinePriceInput() {
         </>
       )}
 
-      {historicalBaseline && (
+      {historicalPrice && (
         <p className="text-xs text-muted-foreground">
-          Historical: {historicalBaseline.price_per_litre.toFixed(4)} / {historicalBaseline.volume_units.toLocaleString()} units (week {historicalBaseline.yearweek})
+          Historical: {historicalPrice.price_per_litre.toFixed(4)} / {historicalPrice.volume_units.toLocaleString()} units (week {historicalPrice.yearweek})
         </p>
       )}
     </div>
