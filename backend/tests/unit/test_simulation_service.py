@@ -50,10 +50,10 @@ def test_baseline_and_arc_elasticity_computed(client) -> None:
     assert resp.arc_elasticity < 0  # price up → volume down
 
 
-def test_warning_when_baseline_not_found(client) -> None:
-    # Unknown SKU means no baseline lookup succeeds
+def test_warning_when_historical_price_not_found(client) -> None:
+    # Unknown SKU means no historical price lookup succeeds
     resp = run_simulation(_req(product_sku_code=999999))
-    assert any("No baseline" in w for w in resp.warnings)
+    assert any("No historical price" in w for w in resp.warnings)
 
 
 def test_selected_price_below_p1_adds_warning(client) -> None:

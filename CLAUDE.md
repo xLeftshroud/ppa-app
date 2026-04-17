@@ -10,16 +10,16 @@ PPA (Price Promotion Analysis) is a full-stack monorepo for price elasticity / w
 
 - **`backend/`** — Python FastAPI server (port 8000)
   - `app/main.py` — App factory, lifespan (loads ML pipeline at startup), CORS, router registration
-  - `app/routers/` — FastAPI route handlers: `datasets`, `catalog`, `baseline`, `simulate`
-  - `app/services/` — Business logic: `dataset_service` (in-memory dict store), `catalog_service`, `baseline_service`, `simulation_service`, `pipeline_service`
+  - `app/routers/` — FastAPI route handlers: `datasets`, `catalog`, `historical_price`, `simulate`
+  - `app/services/` — Business logic: `dataset_service` (in-memory dict store), `catalog_service`, `historical_price_service`, `simulation_service`, `pipeline_service`
   - `app/models/` — Pydantic v2 request/response schemas
   - `app/utils/` — CSV validation, feature builder (week_sin/cos), error handling middleware (request_id injection, unified error envelope)
   - `app/ml/` — DummyDemandModel (sklearn BaseEstimator), metadata.json, pipeline.joblib placeholder
 
 - **`frontend/`** — React 18 + TypeScript + Vite (port 5173)
   - `src/api/` — Fetch-based API client with typed functions per endpoint
-  - `src/store/useAppStore.ts` — Zustand global state (dataset, SKU, controls, baseline, results)
-  - `src/hooks/` — TanStack Query hooks: `useSimulate` (debounced 300ms), `useBaseline`, `useCatalog`
+  - `src/store/useAppStore.ts` — Zustand global state (dataset, SKU, controls, historical price, results)
+  - `src/hooks/` — TanStack Query hooks: `useSimulate` (debounced 300ms), `useHistoricalPrice`, `useCatalog`
   - `src/components/` — shadcn/ui-based components: upload zone, SKU selector, input controls, results card, ECharts demand curve
   - `src/pages/HomePage.tsx` — Two-column layout wiring all components
 
@@ -38,7 +38,7 @@ cd frontend && npm install && npm run dev
 
 ## Key Business Rules
 
-- **Baseline**: Filter dataset by `sku + customer`, take row with `max(yearweek)` → baseline_price = price_per_litre, baseline_volume = nielsen_total_volume
+- **Historical price**: Filter dataset by `sku + customer`, take row with `max(yearweek)` → historical_price = price_per_litre, historical_volume = nielsen_total_volume. This is reference data only; the simulation's baseline comes from the user's manual input (`baselinePrice`).
 - **Curve**: Continuous prices from £0.001 to £10.000 (step £0.001); batch predicted via `pipeline.predict(df)`
 - **Elasticity**: Local ±1% center-difference at selected price point. Falls back to one-sided if P- clamped to 0.01
 - **Week features**: `week_sin = sin(2*pi*week/52)`, `week_cos = cos(2*pi*week/52)`
@@ -47,7 +47,7 @@ cd frontend && npm install && npm run dev
 
 All API errors return: `{"error": {"code": "...", "message": "...", "details": [...], "request_id": "uuid"}}`
 
-Error codes: CSV_PARSE_ERROR (400), CSV_SCHEMA_INVALID (422), BASELINE_NOT_FOUND (404), INFERENCE_ERROR (500), VALIDATION_ERROR (422)
+Error codes: CSV_PARSE_ERROR (400), CSV_SCHEMA_INVALID (422), HISTORICAL_PRICE_NOT_FOUND (404), INFERENCE_ERROR (500), VALIDATION_ERROR (422)
 
 ## Dataset Storage
 

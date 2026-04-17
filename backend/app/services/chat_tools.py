@@ -8,7 +8,6 @@ from typing import Any
 
 from app.models.chat_models import AppStateSnapshot, ChatCustomPlotSummary, UIAction
 from app.models.request_models import PredictPointsRequest, SimulateRequest
-from app.services.baseline_service import get_baseline
 from app.services.catalog_service import (
     get_distinct_brands,
     get_distinct_customers,
@@ -18,10 +17,11 @@ from app.services.catalog_service import (
     get_sku_catalog,
 )
 from app.services.dataset_service import get_dataset
+from app.services.historical_price_service import get_historical_price
 from app.services.optimization_service import optimize_revenue
 from app.services.price_range_service import get_price_range
 from app.services.simulation_service import predict_points, run_simulation
-from app.utils.error_handler import AppError, BaselineNotFound
+from app.utils.error_handler import AppError, HistoricalPriceNotFound
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +57,8 @@ TOOL_DEFINITIONS: list[dict] = [
     {
         "type": "function",
         "function": {
-            "name": "get_baseline",
-            "description": "Get the historical baseline price and volume for a SKU at a specific customer. Returns the most recent data point (yearweek, price_per_litre, volume_units).",
+            "name": "get_historical_price",
+            "description": "Get the most recent historical price and volume for a SKU at a specific customer (yearweek, price_per_litre, volume_units). This is reference data from training records — NOT the user's current simulation baseline input.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -521,7 +521,7 @@ def _build_sim_request(
         pack_type_internal=_resolve("pack_type_internal", app_state.pack_type),
         pack_size_internal=_resolve("pack_size_internal", app_state.pack_size),
         units_per_package_internal=_resolve("units_per_package_internal", app_state.units_pkg),
-        baseline_override_price_per_litre=args.get("baseline_price_per_litre", app_state.baseline_price_input),
+        baseline_override_price_per_litre=args.get("baseline_price_per_litre", app_state.baseline_price),
         selected_price_change_pct=args.get("selected_price_change_pct"),
         selected_new_price_per_litre=args.get("selected_new_price_per_litre"),
     )
@@ -551,7 +551,7 @@ def _build_predict_request(
         pack_type_internal=_resolve("pack_type_internal", app_state.pack_type),
         pack_size_internal=_resolve("pack_size_internal", app_state.pack_size),
         units_per_package_internal=_resolve("units_per_package_internal", app_state.units_pkg),
-        baseline_price=args.get("baseline_price_per_litre", app_state.baseline_price_input),
+        baseline_price=args.get("baseline_price_per_litre", app_state.baseline_price),
         selected_price=args.get("selected_new_price_per_litre"),
     )
 
@@ -620,9 +620,9 @@ def execute_tool(
     ui_actions: list[UIAction] = []
 
     try:
-        if tool_name == "get_baseline":
+        if tool_name == "get_historical_price":
             df = get_dataset()
-            result = get_baseline(df, tool_args["product_sku_code"], tool_args["customer"])
+            result = get_historical_price(df, tool_args["product_sku_code"], tool_args["customer"])
             return json.dumps(result), ui_actions
 
         elif tool_name == "run_simulation":
@@ -922,7 +922,7 @@ def execute_tool(
         else:
             return json.dumps({"error": f"Unknown tool: {tool_name}"}), ui_actions
 
-    except BaselineNotFound as e:
+    except HistoricalPriceNotFound as e:
         return json.dumps({"error": str(e)}), ui_actions
     except AppError as e:
         return json.dumps({"error": f"{e.code}: {e.message}"}), ui_actions

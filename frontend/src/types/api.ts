@@ -12,7 +12,13 @@ export interface SkuListResponse {
   items: SkuItem[];
 }
 
-export interface BaselineResponse {
+export interface HistoricalPriceResponse {
+  yearweek: number;
+  price_per_litre: number;
+  volume_units: number;
+}
+
+export interface SimulationBaseline {
   yearweek: number;
   price_per_litre: number;
   volume_units: number;
@@ -41,7 +47,7 @@ export interface ModelInfo {
 export interface SimulateResponse {
   model_info: ModelInfo;
   warnings: string[];
-  baseline: BaselineResponse | null;
+  baseline: SimulationBaseline | null;
   baseline_elasticity: number | null;
   selected: SelectedResult | null;
   arc_elasticity: number | null;

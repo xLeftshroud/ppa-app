@@ -21,8 +21,9 @@ export interface AppStateSnapshot {
   promotion: 0 | 1;
   week: number | null;
   baseline_price: number | null;
-  baseline_volume: number | null;
-  baseline_price_input: number | null;
+  historical_price: number | null;
+  historical_volume: number | null;
+  historical_yearweek: number | null;
   price_input_mode: "direct" | "percentage";
   price_change_pct: number;
   selected_new_price: number | null;

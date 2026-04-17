@@ -66,12 +66,12 @@ describe("useAppStore", () => {
     expect(useAppStore.getState().customPlots).toHaveLength(0);
   });
 
-  it("setCustomer clears baseline + cached curve", () => {
-    useAppStore.getState().setHistoricalBaseline({ yearweek: 1, price_per_litre: 1, volume_units: 1 });
+  it("setCustomer clears historical price + cached curve", () => {
+    useAppStore.getState().setHistoricalPrice({ yearweek: 1, price_per_litre: 1, volume_units: 1 });
     useAppStore.getState().setCachedCurve([{ price_per_litre: 1, predicted_volume_units: 1 }], "fp");
     useAppStore.getState().setCustomer("L2_TESCO");
     const s = useAppStore.getState();
-    expect(s.historicalBaseline).toBeNull();
+    expect(s.historicalPrice).toBeNull();
     expect(s.cachedCurve).toBeNull();
   });
 

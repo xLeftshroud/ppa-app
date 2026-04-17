@@ -15,7 +15,8 @@
       "Bash(xargs grep:*)",
       "Bash(xargs -I {} bash -c 'echo \"=== {} ===\" && head -20 \"{}\"')",
       "Bash(npm run:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "Bash(npm test *)"
     ]
   }
 }
