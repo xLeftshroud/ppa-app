@@ -92,11 +92,11 @@ export function HomePage() {
             <div className={cn("flex flex-col gap-6", isChatOpen ? "xl:flex-row" : "lg:flex-row")}>
               <div
                 className={cn(
-                  "min-w-0 w-full shrink-0 space-y-5",
+                  "min-w-0 w-full shrink-0 space-y-3",
                   isChatOpen ? "xl:w-[360px] 2xl:w-[380px]" : "lg:w-[380px]",
                 )}
               >
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <h2 className="mb-1 text-lg font-semibold">SKU Selection</h2>
                   <SkuSelector />
                   <div className="grid grid-cols-2 gap-2">
@@ -113,7 +113,7 @@ export function HomePage() {
                   </div>
                 </div>
 
-                <div className="space-y-2 border-t pt-2">
+                <div className="space-y-1 border-t pt-2">
                   <h2 className="mb-0.5 text-lg font-semibold">Prediction Controls</h2>
                   <div className="grid grid-cols-2 gap-2">
                     <CustomerSelect />
@@ -124,7 +124,7 @@ export function HomePage() {
 
                 <div className="border-t pt-2">
                   <h2 className="mb-1 text-lg font-semibold">Baseline & Price</h2>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     <BaselinePriceInput />
                     <PriceSlider />
                   </div>
