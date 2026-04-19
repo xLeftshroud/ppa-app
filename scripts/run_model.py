@@ -81,14 +81,18 @@ def pick_features(df_dev: pd.DataFrame, model_type: str) -> list[str]:
     ]
     cats = ["product_sku_code", "customer", "top_brand", "flavor_internal",
             "pack_type_internal", "pack_tier"]
-    candidates = [c for c in base_candidates if c in df_dev.columns]
-    cats_in = [c for c in cats if c in df_dev.columns]
 
+    # Elastic Net uses log_price_per_litre (log-log -> coef = elasticity);
+    # tree models use raw price_per_litre. Drop the other version from the
+    # candidate pool so correlation_prune can't silently remove the one we
+    # actually want.
     if model_type == "elastic_net":
-        # Linear model: L1 handles selection; still run domain+VIF
-        fs_model = "xgb"  # use xgb for BorutaShap importance
+        candidates = [c for c in base_candidates
+                      if c in df_dev.columns and c != "price_per_litre"]
     else:
-        fs_model = model_type
+        candidates = [c for c in base_candidates
+                      if c in df_dev.columns and c != "log_price_per_litre"]
+    cats_in = [c for c in cats if c in df_dev.columns]
 
     # take a smaller random sample for BorutaShap (performance)
     fs_df = df_dev.sample(min(10000, len(df_dev)), random_state=42).reset_index(drop=True)
@@ -97,8 +101,8 @@ def pick_features(df_dev: pd.DataFrame, model_type: str) -> list[str]:
         fs_df[candidates].dropna(),
         candidate_cols=candidates,
         y=y_fs,
-        model_type=fs_model,
-        do_stability=False,  # stability takes too long for quick run
+        model_type=model_type,
+        do_stability=True,  # turn to False if stability takes too long for quick run
     )
     final_numeric = result["final"]
     # always include categoricals for tree models

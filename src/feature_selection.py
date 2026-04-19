@@ -82,19 +82,29 @@ def _make_fs_estimator(model_type: str, random_state: int):
     if model_type == "xgb":
         import xgboost as xgb
         return xgb.XGBRegressor(
-            n_estimators=200, max_depth=6, learning_rate=0.1,
-            tree_method="hist", random_state=random_state, n_jobs=-1,
+            n_estimators=200,
+            max_depth=6, 
+            learning_rate=0.1,
+            tree_method="hist", 
+            random_state=random_state, 
+            n_jobs=-1,
         )
     if model_type == "lgb":
         import lightgbm as lgb
         return lgb.LGBMRegressor(
-            n_estimators=200, max_depth=-1, learning_rate=0.1,
-            random_state=random_state, n_jobs=-1, verbose=-1,
+            n_estimators=200,
+            max_depth=-1,
+            learning_rate=0.1,
+            random_state=random_state,
+            n_jobs=-1,
+            verbose=-1,
         )
     if model_type == "rf":
         from sklearn.ensemble import RandomForestRegressor
         return RandomForestRegressor(
-            n_estimators=200, n_jobs=-1, random_state=random_state,
+            n_estimators=200,
+            n_jobs=-1,
+            random_state=random_state,
         )
     raise ValueError(f"Unsupported model_type: {model_type}")
 
@@ -199,6 +209,44 @@ def stability_selection(
     return kept, frequencies
 
 
+def elastic_net_select(
+    X: pd.DataFrame,
+    y: np.ndarray,
+    l1_ratios: tuple[float, ...] = (0.1, 0.5, 0.7, 0.9, 0.95),
+    cv: int = 4,
+    coef_eps: float = 1e-8,
+    random_state: int = 42,
+) -> tuple[list[str], dict]:
+    """L1-based feature selection for linear models (Elastic Net's "Step 3").
+
+    Symmetric to ``borutashap_select`` for tree models: selects a subset of
+    features using the model's own sparsity mechanism. ElasticNetCV finds the
+    selection-optimal (alpha, l1_ratio) via internal CV on standardized
+    features; features with |coef| > coef_eps are retained. Downstream Optuna
+    re-tunes (alpha, l1_ratio) for predictive power on this reduced set.
+    """
+    from sklearn.linear_model import ElasticNetCV
+    from sklearn.preprocessing import StandardScaler
+
+    Xs = StandardScaler().fit_transform(X.astype(float))
+    enet = ElasticNetCV(
+        l1_ratio=list(l1_ratios),
+        cv=cv,
+        max_iter=20_000,
+        random_state=random_state,
+        n_jobs=-1,
+    ).fit(Xs, np.asarray(y, dtype=float))
+    coefs = enet.coef_
+    selected = [c for c, b in zip(X.columns, coefs) if abs(b) > coef_eps]
+    info = {
+        "alpha_selected": float(enet.alpha_),
+        "l1_ratio_selected": float(enet.l1_ratio_),
+        "n_selected": len(selected),
+        "coefs": dict(zip(X.columns, [float(b) for b in coefs])),
+    }
+    return selected, info
+
+
 def run_full_pipeline(
     df: pd.DataFrame,
     candidate_cols: list[str],
@@ -209,13 +257,38 @@ def run_full_pipeline(
 ) -> dict:
     """Full 4-step industrial feature selection.
 
-    Returns a dict with keys: step1_core, step2_after_vif, step3_boruta, step4_stable, final.
+    Tree models (xgb/lgb/rf): VIF -> BorutaShap -> (optional) Stability.
+    Elastic Net: VIF -> L1 selection via ElasticNetCV (Boruta is skipped --
+    L1 sparsity IS the selector; external shadow/SHAP is not meaningful for
+    linear models).
+
+    Returns a dict with keys: step1_core, step2_after_vif, step3_*, step4_stable, final.
     """
     protected = [c for c in DOMAIN_CORE_FEATURES if c in candidate_cols]
 
     # Step 2: VIF + correlation
     after_corr = correlation_prune(df, candidate_cols, protected=protected)
     after_vif = vif_prune(df, after_corr, protected=protected)
+
+    # Elastic Net branch: L1-based selection, symmetric to Boruta for trees
+    if model_type == "elastic_net":
+        X_lin = df[after_vif].dropna().astype(float)
+        y_lin = np.asarray(y)[df.index.get_indexer(X_lin.index)]
+        try:
+            l1_sel, l1_info = elastic_net_select(X_lin, y_lin, random_state=random_state)
+        except Exception as e:
+            l1_sel, l1_info = after_vif, {"error": str(e)}
+            print(f"[feature_selection] elastic_net_select failed: {e}. Falling back to VIF set.")
+        final = list(dict.fromkeys(protected + l1_sel))
+        return {
+            "step1_core": protected,
+            "step2_after_vif": after_vif,
+            "step3_l1_select": l1_sel,
+            "step3_info": l1_info,
+            "step4_stable": None,
+            "step4_frequencies": None,
+            "final": final,
+        }
 
     # Step 3: BorutaShap single run
     X = df[after_vif].dropna().astype(float)
