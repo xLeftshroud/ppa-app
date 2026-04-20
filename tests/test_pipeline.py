@@ -36,8 +36,7 @@ def test_feature_engineering():
 
     # new features present
     for col in ["log_volume", "log_price_per_litre", "total_pack_volume_ml",
-                "pack_tier", "price_imputed_flag",
-                "price_premium_vs_brand", "price_premium_vs_pack_tier",
+                "pack_tier", "price_premium_vs_brand", "price_premium_vs_pack_tier",
                 "promo_depth", "log_volume_lag1", "log_volume_lag4"]:
         assert col in df_fe.columns, f"missing feature: {col}"
     # collinear prices kept in frame but excluded from CANDIDATE_FEATURES

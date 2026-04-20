@@ -15,7 +15,6 @@ def add_base_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     out = df.copy()
 
-    out["price_imputed_flag"] = out["_price_before_impute"].isna().astype(int)
     out["total_pack_volume_ml"] = (
         out["pack_size_internal"] * out["units_per_package_internal"]
     )

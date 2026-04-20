@@ -44,7 +44,6 @@ CANDIDATE_FEATURES = [
     "total_pack_volume_ml",
     "price_premium_vs_brand",
     "price_premium_vs_pack_tier",
-    "price_imputed_flag",
     "week_sin",
     "week_cos",
     "log_volume_lag1",
