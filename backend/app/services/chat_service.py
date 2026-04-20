@@ -38,7 +38,7 @@ of historical data. Drives elasticity and delta math in the simulator.
 - **Demand curve**: predicted volume across a dense grid of prices (£0.001–£10).
 - **Elasticity**: point-elasticity from a ±1% center-difference around the selected price; outputs are \
 correlational, not causal.
-- **Revenue**: price_per_litre × predicted_volume_units.
+- **Revenue (Gross Sales)**: volume_units × price_per_item, where price_per_item = price_per_litre × (pack_size_ml / 1000) × units_per_package. volume_units is package count (Nielsen convention), not litres.
 
 ## Current app state
 {app_state_json}

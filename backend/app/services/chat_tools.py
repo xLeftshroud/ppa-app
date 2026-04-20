@@ -20,6 +20,7 @@ from app.services.dataset_service import get_dataset
 from app.services.historical_price_service import get_historical_price
 from app.services.optimization_service import optimize_revenue
 from app.services.price_range_service import get_price_range
+from app.services.revenue_utils import compute_revenue
 from app.services.simulation_service import predict_points, run_simulation
 from app.utils.error_handler import AppError, HistoricalPriceNotFound
 
@@ -221,7 +222,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "optimize_revenue",
-            "description": "Find the price that maximizes revenue (price x volume) for the given configuration. Optionally restrict the search to a price range (e.g. p5–p95 from get_price_range). Returns optimal price, volume, revenue, and comparison to baseline revenue.",
+            "description": "Find the price that maximizes revenue (gross sales: volume_units x price_per_item) for the given configuration. Optionally restrict the search to a price range (e.g. p5–p95 from get_price_range). Returns optimal price, volume, revenue, and comparison to baseline revenue.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -675,8 +676,8 @@ def execute_tool(
                 if bl_vol != 0:
                     summary["delta_volume_units"] = round(sel_vol - bl_vol, 2)
                     summary["delta_volume_pct"] = round((sel_vol - bl_vol) / bl_vol, 6)
-                summary["baseline_revenue"] = round(bl_price * bl_vol, 2)
-                summary["selected_revenue"] = round(sel_price * sel_vol, 2)
+                summary["baseline_revenue"] = compute_revenue(bl_price, bl_vol, req.pack_size_internal, req.units_per_package_internal)
+                summary["selected_revenue"] = compute_revenue(sel_price, sel_vol, req.pack_size_internal, req.units_per_package_internal)
             if resp.arc_elasticity is not None:
                 summary["arc_elasticity"] = resp.arc_elasticity
             return json.dumps(summary), ui_actions
@@ -718,14 +719,14 @@ def execute_tool(
                 if resp.baseline:
                     s["baseline_price"] = resp.baseline.price_per_litre
                     s["baseline_volume"] = resp.baseline.volume_units
-                    s["baseline_revenue"] = round(resp.baseline.price_per_litre * resp.baseline.volume_units, 2)
+                    s["baseline_revenue"] = compute_revenue(resp.baseline.price_per_litre, resp.baseline.volume_units, req.pack_size_internal, req.units_per_package_internal)
                 if resp.selected:
                     s["new_price"] = resp.selected.new_price_per_litre
                     s["predicted_volume"] = resp.selected.predicted_volume_units
                     s["delta_volume_units"] = resp.selected.delta_volume_units
                     s["delta_volume_pct"] = resp.selected.delta_volume_pct
                     s["elasticity"] = resp.selected.elasticity
-                    s["revenue"] = round(resp.selected.new_price_per_litre * resp.selected.predicted_volume_units, 2)
+                    s["revenue"] = compute_revenue(resp.selected.new_price_per_litre, resp.selected.predicted_volume_units, req.pack_size_internal, req.units_per_package_internal)
                 results[key] = s
             return json.dumps(results), ui_actions
 
