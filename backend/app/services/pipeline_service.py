@@ -18,6 +18,7 @@ _metadata: dict[str, Any] = {}
 
 _MODEL_PATH = Path(settings.model_path)
 _METADATA_PATH = Path(settings.metadata_path)
+_DUMMY_METADATA_PATH = Path(__file__).resolve().parent.parent / "ml" / "dummy_metadata.json"
 
 
 def _build_dummy_pipeline() -> Pipeline:
@@ -29,13 +30,15 @@ def load_pipeline() -> None:
 
     try:
         _pipeline = joblib.load(_MODEL_PATH)
+        with open(_METADATA_PATH) as f:
+            _metadata = json.load(f)
         logger.info("Loaded real pipeline from %s", _MODEL_PATH)
     except Exception as exc:
         logger.warning("pipeline.joblib not found or failed to load (%s), using DummyPipeline", exc)
         _pipeline = _build_dummy_pipeline()
+        with open(_DUMMY_METADATA_PATH) as f:
+            _metadata = json.load(f)
 
-    with open(_METADATA_PATH) as f:
-        _metadata = json.load(f)
     logger.info("Loaded metadata: model=%s version=%s", _metadata.get("model_name"), _metadata.get("model_version"))
 
 

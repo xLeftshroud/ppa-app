@@ -1,0 +1,20 @@
+{
+  "model_name": "dummy_demand_model",
+  "model_version": "0.1.0",
+  "description": "Log-log constant-elasticity fallback model (epsilon=-1.8). Used when real pipeline.joblib is unavailable.",
+  "sklearn_version": "1.8.0",
+  "is_fallback": true,
+  "features": [
+    "price_per_litre",
+    "customer",
+    "promotion_indicator",
+    "top_brand",
+    "flavor_internal",
+    "pack_size_internal",
+    "units_per_package_internal",
+    "pack_type_internal",
+    "continuous_week",
+    "week_sin",
+    "week_cos"
+  ]
+}
