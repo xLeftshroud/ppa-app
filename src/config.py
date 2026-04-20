@@ -11,6 +11,7 @@ N_FOLDS = 4
 N_SPLITS = 4
 TEST_WEEK_RATIO = 0.20
 TUNING_WALLCLOCK_SEC = 3600
+TUNING_MAX_TRIALS = 1000
 
 TARGET = "nielsen_total_volume"
 TIME_COL = "continuous_week"

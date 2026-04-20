@@ -149,6 +149,7 @@ def run_tuning(
     feature_cols: list[str],
     seed: int = 42,
     timeout_sec: int = 3600,
+    max_trials: int | None = None,
     study_name: str | None = None,
     storage: str | None = None,
     metric: str = "rmse",
@@ -168,7 +169,12 @@ def run_tuning(
     obj = build_objective(
         model_type, df_dev, y_dev, folds, feature_cols, seed=seed, metric=metric,
     )
-    study.optimize(obj, timeout=timeout_sec, show_progress_bar=False)
+    study.optimize(
+        obj,
+        timeout=timeout_sec,
+        n_trials=max_trials,
+        show_progress_bar=False,
+    )
     return {
         "best_params": study.best_params,
         "best_value": study.best_value,

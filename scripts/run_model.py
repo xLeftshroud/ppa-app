@@ -29,7 +29,7 @@ import sklearn
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.config import DATA_PATH, OUTPUTS, SEEDS, TUNING_WALLCLOCK_SEC, DOMAIN_CORE_FEATURES
+from src.config import DATA_PATH, OUTPUTS, SEEDS, TUNING_WALLCLOCK_SEC, TUNING_MAX_TRIALS, DOMAIN_CORE_FEATURES
 from src.features import add_base_features, add_panel_features, drop_collinear_prices
 from src.split import expanding_window_cv, final_holdout_split
 from src.feature_selection import run_full_pipeline
@@ -117,6 +117,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True, choices=list(MODEL_CLASSES.keys()))
     ap.add_argument("--timeout", type=int, default=TUNING_WALLCLOCK_SEC)
+    ap.add_argument("--max-trials", type=int, default=TUNING_MAX_TRIALS,
+                    help="Hard cap on Optuna trials; wall-clock usually triggers first.")
     ap.add_argument("--seeds", type=int, nargs="+", default=SEEDS)
     ap.add_argument("--skip-tune", action="store_true")
     ap.add_argument("--output-suffix", default="")
@@ -153,6 +155,7 @@ def main():
         tune = run_tuning(
             model_type, df_dev, y_dev, folds, feature_cols,
             seed=args.seeds[0], timeout_sec=args.timeout,
+            max_trials=args.max_trials,
             storage=f"sqlite:///{OUTPUTS / 'optuna.db'}",
             metric=args.metric,
         )
