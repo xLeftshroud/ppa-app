@@ -2,11 +2,17 @@ import { useAppStore } from "@/store/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function Cell({ label, value }: { label: string; value: string }) {
+function Cell({ label, value, tone }: { label: string; value: string; tone?: number | null }) {
+  const toneClass =
+    tone == null || tone === 0
+      ? ""
+      : tone > 0
+      ? "text-green-600"
+      : "text-red-600";
   return (
     <div className="space-y-0.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="text-sm font-semibold font-mono">{value}</p>
+      <p className={`text-sm font-semibold font-mono ${toneClass}`}>{value}</p>
     </div>
   );
 }
@@ -95,14 +101,14 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
           {/* Row 1: Price */}
           <Cell label="Baseline Price" value={fmt(bPrice)} />
           <Cell label="New Price" value={fmt(nPrice)} />
-          <Cell label="Price Change" value={priceChange != null ? `${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(4)}` : "N/A"} />
-          <Cell label="Price Change %" value={priceChangePct != null ? fmtPctRaw(priceChangePct) : "N/A"} />
+          <Cell label="Price Change" value={priceChange != null ? `${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(4)}` : "N/A"} tone={priceChange} />
+          <Cell label="Price Change %" value={priceChangePct != null ? fmtPctRaw(priceChangePct) : "N/A"} tone={priceChangePct} />
 
           {/* Row 2: Volume */}
           <Cell label="Baseline Volume" value={fmtVol(bVol)} />
           <Cell label="New Volume" value={fmtVol(nVol)} />
-          <Cell label="Volume Change" value={volChange != null ? `${volChange >= 0 ? "+" : ""}${Math.round(volChange).toLocaleString()}` : "N/A"} />
-          <Cell label="Volume Change %" value={fmtPct(volChangePct)} />
+          <Cell label="Volume Change" value={volChange != null ? `${volChange >= 0 ? "+" : ""}${Math.round(volChange).toLocaleString()}` : "N/A"} tone={volChange} />
+          <Cell label="Volume Change %" value={fmtPct(volChangePct)} tone={volChangePct} />
 
           {/* Row 3: Elasticity */}
           <Cell label="Baseline Elasticity" value={fmt(bElast)} />
