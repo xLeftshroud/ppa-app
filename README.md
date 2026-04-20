@@ -43,7 +43,7 @@ VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```bash
 cd backend
 pip install -r requirements-dev.txt
-pytest -v
+python -m pytest -v
 ```
 
 ### Frontend unit/component (Vitest + React Testing Library + MSW)
@@ -144,7 +144,7 @@ Upload CSV files with these required columns (no missing values):
 | GET | `/v1/catalog/skus?dataset_id=` | List SKUs with attributes |
 | GET | `/v1/catalog/customers?dataset_id=` | List customers from the uploaded dataset |
 | GET | `/v1/catalog/promotions` | List promotion values |
-| GET | `/v1/historical-price?product_sku_code=&customer=` | Get latest historical price/volume for SKU + customer |
+| GET | `/v1/baseline?dataset_id=&product_sku_code=&customer=` | Get baseline price/volume |
 | POST | `/v1/simulate` | Run simulation (curve + elasticity) |
 | GET | `/v1/chat/providers` | Get enabled chat providers and default selection |
 | POST | `/v1/chat` | Send a chat message using the selected provider |
