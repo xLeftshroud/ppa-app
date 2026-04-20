@@ -36,6 +36,35 @@ The frontend defaults to `http://localhost:8000` as the API base. Override with:
 VITE_API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
+## Testing
+
+### Backend (pytest + FastAPI TestClient)
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest -v
+```
+
+### Frontend unit/component (Vitest + React Testing Library + MSW)
+
+```bash
+cd frontend
+npm install
+npm run test:run       # headless
+npm run test:ui        # interactive UI
+```
+
+### End-to-end (Playwright, real backend + Vite)
+
+```bash
+cd frontend
+npx playwright install chromium   # first time only
+npm run test:e2e
+```
+
+CI runs all three layers automatically on push/PR via `.github/workflows/test.yml`.
+
 ## Environment Configuration
 
 The backend reads settings from `backend/.env` (see `backend/.env.example` for all options):
@@ -113,9 +142,8 @@ Upload CSV files with these required columns (no missing values):
 |--------|------|-------------|
 | POST | `/v1/datasets/upload` | Upload CSV dataset |
 | GET | `/v1/catalog/skus?dataset_id=` | List SKUs with attributes |
-| GET | `/v1/catalog/customers` | List valid customers |
+| GET | `/v1/catalog/customers?dataset_id=` | List customers from the uploaded dataset |
 | GET | `/v1/catalog/promotions` | List promotion values |
-| POST | `/v1/catalog/sku-lookup` | Reverse-lookup SKU by attributes |
 | GET | `/v1/baseline?dataset_id=&product_sku_code=&customer=` | Get baseline price/volume |
 | POST | `/v1/simulate` | Run simulation (curve + elasticity) |
 | GET | `/v1/chat/providers` | Get enabled chat providers and default selection |

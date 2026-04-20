@@ -9,3 +9,17 @@ backend/data/uploads/*
 !backend/data/uploads/.gitkeep
 .DS_Store
 backend/models/
+.venv/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+frontend/coverage/
+frontend/test-results/
+frontend/playwright-report/
+frontend/playwright/.cache/
+frontend/tsconfig.tsbuildinfo
+
+.claude/

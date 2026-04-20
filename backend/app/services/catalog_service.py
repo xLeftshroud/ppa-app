@@ -38,20 +38,5 @@ def get_distinct_pack_types(df: pd.DataFrame) -> list[str]:
     return sorted(df["pack_type_internal"].dropna().unique().tolist())
 
 
-def lookup_sku_by_attributes(
-    df: pd.DataFrame,
-    top_brand: str,
-    flavor_internal: str,
-    pack_type_internal: str,
-    pack_size_internal: int,
-    units_per_package_internal: int,
-) -> list[dict]:
-    mask = (
-        (df["top_brand"] == top_brand)
-        & (df["flavor_internal"] == flavor_internal)
-        & (df["pack_type_internal"] == pack_type_internal)
-        & (df["pack_size_internal"] == pack_size_internal)
-        & (df["units_per_package_internal"] == units_per_package_internal)
-    )
-    matches = df.loc[mask, SKU_ATTR_COLS].drop_duplicates()
-    return matches.to_dict(orient="records")
+def get_distinct_customers(df: pd.DataFrame) -> list[str]:
+    return sorted(df["customer"].dropna().unique().tolist())

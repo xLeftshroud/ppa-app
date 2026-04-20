@@ -1,11 +1,3 @@
-export interface UploadResponse {
-  dataset_id: string;
-  row_count: number;
-  sku_count: number;
-  customer_values: string[];
-  message: string;
-}
-
 export interface SkuItem {
   product_sku_code: number;
   material_medium_description: string;
@@ -20,14 +12,19 @@ export interface SkuListResponse {
   items: SkuItem[];
 }
 
-export interface BaselineResponse {
+export interface HistoricalPriceResponse {
+  yearweek: number;
+  price_per_litre: number;
+  volume_units: number;
+}
+
+export interface SimulationBaseline {
   yearweek: number;
   price_per_litre: number;
   volume_units: number;
 }
 
 export interface CurvePoint {
-  price_change_pct: number;
   price_per_litre: number;
   predicted_volume_units: number;
 }
@@ -50,17 +47,18 @@ export interface ModelInfo {
 export interface SimulateResponse {
   model_info: ModelInfo;
   warnings: string[];
-  baseline: BaselineResponse | null;
+  baseline: SimulationBaseline | null;
+  baseline_elasticity: number | null;
   selected: SelectedResult | null;
+  arc_elasticity: number | null;
   curve: CurvePoint[];
 }
 
 export interface SimulateRequest {
-  dataset_id: string;
   product_sku_code: number | null;
-  customer: string;
+  customer: string | null;
   promotion_indicator: 0 | 1;
-  week: number;
+  week: number | null;
   top_brand: string | null;
   flavor_internal: string | null;
   pack_type_internal: string | null;
@@ -71,13 +69,30 @@ export interface SimulateRequest {
   selected_new_price_per_litre: number | null;
 }
 
-export interface SkuLookupRequest {
-  dataset_id: string;
-  top_brand: string;
-  flavor_internal: string;
-  pack_type_internal: string;
-  pack_size_internal: number;
-  units_per_package_internal: number;
+export interface PredictPointsRequest {
+  product_sku_code: number | null;
+  customer: string | null;
+  promotion_indicator: 0 | 1;
+  week: number | null;
+  top_brand: string | null;
+  flavor_internal: string | null;
+  pack_type_internal: string | null;
+  pack_size_internal: number | null;
+  units_per_package_internal: number | null;
+  baseline_price: number | null;
+  selected_price: number | null;
+}
+
+export interface PointPrediction {
+  price_per_litre: number;
+  predicted_volume: number;
+  elasticity: number;
+}
+
+export interface PredictPointsResponse {
+  baseline: PointPrediction | null;
+  selected: PointPrediction | null;
+  arc_elasticity: number | null;
 }
 
 export interface ApiErrorBody {

@@ -16,7 +16,6 @@ class ChatCustomPlotSummary(BaseModel):
 
 
 class AppStateSnapshot(BaseModel):
-    dataset_id: str | None = None
     selected_sku: int | None = None
     sku_description: str | None = None
     brand: str | None = None
@@ -26,10 +25,12 @@ class AppStateSnapshot(BaseModel):
     units_pkg: int | None = None
     customer: str | None = None
     promotion: Literal[0, 1] = 0
-    week: int = 1
+    week: int | None = None
     baseline_price: float | None = None
-    baseline_volume: int | None = None
-    baseline_override: float | None = None
+    historical_price: float | None = None
+    historical_volume: int | None = None
+    historical_yearweek: int | None = None
+    price_input_mode: str = "direct"
     price_change_pct: float = 0
     selected_new_price: float | None = None
     has_simulation_result: bool = False

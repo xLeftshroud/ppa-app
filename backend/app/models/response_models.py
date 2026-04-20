@@ -5,14 +5,6 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-class UploadResponse(BaseModel):
-    dataset_id: str
-    row_count: int
-    sku_count: int
-    customer_values: list[str]
-    message: str = "uploaded"
-
-
 class SkuItem(BaseModel):
     product_sku_code: int
     material_medium_description: str
@@ -27,6 +19,12 @@ class SkuListResponse(BaseModel):
     items: list[SkuItem]
 
 
+class HistoricalPriceResponse(BaseModel):
+    yearweek: int
+    price_per_litre: float
+    volume_units: int
+
+
 class BaselineResponse(BaseModel):
     yearweek: int
     price_per_litre: float
@@ -34,7 +32,6 @@ class BaselineResponse(BaseModel):
 
 
 class CurvePoint(BaseModel):
-    price_change_pct: float
     price_per_litre: float
     predicted_volume_units: float
 
@@ -55,10 +52,24 @@ class ModelInfo(BaseModel):
     features_version: str
 
 
+class PointPrediction(BaseModel):
+    price_per_litre: float
+    predicted_volume: float
+    elasticity: float
+
+
+class PredictPointsResponse(BaseModel):
+    baseline: Optional[PointPrediction] = None
+    selected: Optional[PointPrediction] = None
+    arc_elasticity: Optional[float] = None
+
+
 class SimulateResponse(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
     model_info: ModelInfo
     warnings: list[str]
     baseline: Optional[BaselineResponse] = None
+    baseline_elasticity: Optional[float] = None
     selected: Optional[SelectedResult] = None
+    arc_elasticity: Optional[float] = None
     curve: list[CurvePoint]

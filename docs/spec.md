@@ -47,7 +47,7 @@
 用户上传 CSV（UTF-8、逗号分隔、最大 50MB、**无缺失值**）。必须包含且仅需校验这些列：
 
 - `product_sku_code` (int)
-- `customer` (enum，5 选 1)
+- `customer` (str，来源于上传 dataset 中出现的不同值)
 - `yearweek` (int，用于找最新 baseline；模型推理不一定用，但必须存在)
 - `nielsen_total_volume` (int，单位：units)
 - `promotion_indicator` (int，0/1)
@@ -76,24 +76,25 @@
 
 以下变量必须由用户指定（因为同 SKU 可对应多个 customer/促销/季节）：
 
-- `customer`：从固定列表选择
-   `{"L2_ASDA", "L2_CRTG", "L2_MORRISONS", "L2_SAINSBURY'S", "L2_TESCO"}`
+- `customer`：从上传 dataset 中出现的不同 customer 值选择（由后端 `GET /v1/catalog/customers?dataset_id=...` 返回）
 - `promotion_indicator`：0/1
 - `week`：1–52（不是 month，不是 yearweek）
   - 后端特征计算（必须严格用此公式）：
     - `week_sin = sin(2π * week / 52)`
     - `week_cos = cos(2π * week / 52)`
 
-### 2.4 baseline 规则（必须严格）
+### 2.4 historical price 规则（必须严格）
 
-baseline 受 customer 影响：
+historical price 受 customer 影响：
 
-- 在上传 dataset 中，按 `product_sku_code == X AND customer == Y` 过滤
-- 取 `yearweek` 最大的那一行作为最新 baseline row
-- baseline_price = `price_per_litre`
-- baseline_volume = `nielsen_total_volume`（用于显示 Δ）
+- 在 dataset 中，按 `product_sku_code == X AND customer == Y` 过滤
+- 取 `yearweek` 最大的那一行作为最新 historical row
+- historical_price = `price_per_litre`
+- historical_volume = `nielsen_total_volume`（参考值，用于显示 Δ）
 
-若找不到 baseline：返回 `404 BASELINE_NOT_FOUND`（统一错误格式见后文）。
+若找不到 historical price：返回 `404 HISTORICAL_PRICE_NOT_FOUND`（统一错误格式见后文）。
+
+注：historical price 仅作为参考数据。simulation 的 baseline 来自用户手动输入（`baselinePrice`），两者是独立概念。
 
 ### 2.5 价格与约束
 
@@ -199,7 +200,7 @@ GET /v1/catalog/skus?dataset_id=...
 GET /v1/catalog/customers
 ```
 
-- 返回固定 enum 五项
+- 返回上传 dataset 中 customer 列的去重值
 
 ```
 GET /v1/catalog/promotions
@@ -207,15 +208,13 @@ GET /v1/catalog/promotions
 
 - 返回 `[0,1]`
 
-（可选）`POST /v1/catalog/sku-lookup`：用属性组合反查 SKU（唯一）
-
-### 4.3 Baseline 查询
+### 4.3 Historical price 查询
 
 ```
-GET /v1/baseline?dataset_id=...&product_sku_code=...&customer=...
+GET /v1/historical-price?product_sku_code=...&customer=...
 ```
 
-- 返回 baseline_price、baseline_volume、baseline_yearweek
+- 返回 historical_price（`price_per_litre`）、historical_volume（`volume_units`）、historical_yearweek（`yearweek`）
 
 ### 4.4 场景模拟（曲线 + 当前点 + elasticity）
 
@@ -308,7 +307,7 @@ GET /v1/baseline?dataset_id=...&product_sku_code=...&customer=...
 
 - `CSV_PARSE_ERROR` → 400
 - `CSV_SCHEMA_INVALID` → 422
-- `BASELINE_NOT_FOUND` → 404
+- `HISTORICAL_PRICE_NOT_FOUND` → 404
 - `INFERENCE_ERROR` → 500
 - `VALIDATION_ERROR`（请求体字段非法，例如 week 不在 1-52、price<0.01）→ 422
 
@@ -325,7 +324,7 @@ GET /v1/baseline?dataset_id=...&product_sku_code=...&customer=...
 - CSV 上传区（拖拽 + 上传按钮）→ 成功后显示 dataset_id、行数、SKU 数
 - SKU 选择（下拉）+ 属性只读展示
 - 允许用户用属性组合反查 SKU（可选 Tab：By SKU / By Attributes）
-- customer 下拉（5 选 1）
+- customer 下拉（来自上传 dataset 的不同 customer 值）
 - promotion_indicator 切换（0/1）
 - week 输入（1–52，NumberInput）
 - baseline_price（自动填充，允许用户手动 override）

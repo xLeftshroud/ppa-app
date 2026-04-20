@@ -1,14 +1,15 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useChatStore } from "@/store/useChatStore";
 import { useAppStore } from "@/store/useAppStore";
 import { fetchChatProviders, sendChatMessage, type AppStateSnapshot } from "@/api/chat";
 import { applyUIAction } from "./useChatActions";
+import { useSkus } from "./useCatalog";
+import type { SkuItem } from "@/types/api";
 
 function buildSnapshot(): AppStateSnapshot {
   const s = useAppStore.getState();
   return {
-    dataset_id: s.datasetId,
     selected_sku: s.selectedSku,
     sku_description: s.skuAttributes?.material_medium_description ?? null,
     brand: s.attrBrand,
@@ -19,9 +20,11 @@ function buildSnapshot(): AppStateSnapshot {
     customer: s.selectedCustomer,
     promotion: s.promotionIndicator,
     week: s.week,
-    baseline_price: s.baseline?.price_per_litre ?? null,
-    baseline_volume: s.baseline?.volume_units ?? null,
-    baseline_override: s.baselineOverride,
+    baseline_price: s.baselinePrice,
+    historical_price: s.historicalPrice?.price_per_litre ?? null,
+    historical_volume: s.historicalPrice?.volume_units ?? null,
+    historical_yearweek: s.historicalPrice?.yearweek ?? null,
+    price_input_mode: s.priceInputMode,
     price_change_pct: s.selectedPriceChangePct,
     selected_new_price: s.selectedNewPrice,
     has_simulation_result: s.simulateResult !== null,
@@ -55,6 +58,10 @@ export function useChat(runSimulation?: () => void) {
     setSelectedProvider,
     clearHistory,
   } = useChatStore();
+
+  const { data: skuData } = useSkus();
+  const skuItemsRef = useRef<SkuItem[] | undefined>(undefined);
+  skuItemsRef.current = skuData?.items;
 
   const providersQuery = useQuery({
     queryKey: ["chatProviders"],
@@ -124,7 +131,7 @@ export function useChat(runSimulation?: () => void) {
           if (action.action === "trigger_simulation") {
             shouldTriggerSim = true;
           } else {
-            applyUIAction(action);
+            applyUIAction(action, skuItemsRef.current);
           }
         }
 

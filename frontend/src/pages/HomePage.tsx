@@ -17,18 +17,15 @@ import { PackTypeSelect } from "@/components/sku/PackTypeSelect";
 import { NullableNumberInput } from "@/components/sku/NullableNumberInput";
 import { SearchableAttrSelect } from "@/components/sku/SearchableAttrSelect";
 import { SkuSelector } from "@/components/sku/SkuSelector";
-import { CsvUploadZone } from "@/components/upload/CsvUploadZone";
 import { useAllCustomPlotData } from "@/hooks/useAllCustomPlotData";
 import { useBrands, useFlavors, usePackTypes } from "@/hooks/useCatalog";
 import { useChat } from "@/hooks/useChat";
-import { usePriceRange } from "@/hooks/usePriceRange";
 import { useSimulate } from "@/hooks/useSimulate";
 import { toast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/useAppStore";
 
 export function HomePage() {
-  const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
   const attrBrand = useAppStore((s) => s.attrBrand);
   const attrFlavor = useAppStore((s) => s.attrFlavor);
@@ -46,10 +43,10 @@ export function HomePage() {
   const chat = useChat(runNow);
   const isChatOpen = chat.isOpen;
 
-  const { data: priceRange } = usePriceRange(selectedSku);
-  const { data: brands = [] } = useBrands(datasetId);
-  const { data: flavors = [] } = useFlavors(datasetId);
-  const { data: packTypes = [] } = usePackTypes(datasetId);
+  const priceRange = useAppStore((s) => s.priceRange);
+  const { data: brands = [] } = useBrands();
+  const { data: flavors = [] } = useFlavors();
+  const { data: packTypes = [] } = usePackTypes();
   const customPlotData = useAllCustomPlotData();
 
   const scatterOverlays = useMemo(
@@ -79,7 +76,7 @@ export function HomePage() {
     <>
       <div
         className={cn(
-          "px-4 py-6 transition-[padding] duration-200 ease-in-out md:[--chat-inline-width:280px] lg:[--chat-inline-width:320px] xl:[--chat-inline-width:360px] 2xl:[--chat-inline-width:400px]",
+          "px-4 py-3 transition-[padding] duration-200 ease-in-out md:[--chat-inline-width:280px] lg:[--chat-inline-width:320px] xl:[--chat-inline-width:360px] 2xl:[--chat-inline-width:400px]",
           isChatOpen ? "md:px-4 lg:px-5 xl:px-6 2xl:px-8" : "md:px-6 xl:px-8 2xl:px-10",
         )}
       >
@@ -95,65 +92,58 @@ export function HomePage() {
             <div className={cn("flex flex-col gap-6", isChatOpen ? "xl:flex-row" : "lg:flex-row")}>
               <div
                 className={cn(
-                  "min-w-0 w-full shrink-0 space-y-5",
+                  "min-w-0 w-full shrink-0 space-y-3",
                   isChatOpen ? "xl:w-[360px] 2xl:w-[380px]" : "lg:w-[380px]",
                 )}
               >
-                <div>
-                  <h2 className="mb-3 text-lg font-semibold">Data Upload</h2>
-                  <CsvUploadZone />
+                <div className="space-y-1">
+                  <h2 className="mb-1 text-lg font-semibold">SKU Selection</h2>
+                  <SkuSelector />
+                  <div className="grid grid-cols-2 gap-2">
+                    <SearchableAttrSelect label="Brand" options={brands} value={attrBrand} onChange={setAttrBrand} />
+                    <SearchableAttrSelect label="Flavor" options={flavors} value={attrFlavor} onChange={setAttrFlavor} />
+                    <PackTypeSelect options={packTypes} value={attrPackType} onChange={setAttrPackType} />
+                    <NullableNumberInput label="Units/Pkg" value={attrUnitsPkg} onChange={setAttrUnitsPkg} min={1} />
+                    <NullableNumberInput label="Pack Size" value={attrPackSize} onChange={setAttrPackSize} min={1} />
+                    <div className="flex items-end">
+                      <Button variant="outline" size="sm" className="w-full" onClick={clearSkuAttrs}>
+                        Clear All
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
-                {datasetId && (
-                  <>
-                    <div className="space-y-3 border-t pt-4">
-                      <h2 className="mb-3 text-lg font-semibold">SKU Selection</h2>
-                      <SkuSelector />
-                      <div className="grid grid-cols-2 gap-3">
-                        <SearchableAttrSelect label="Brand" options={brands} value={attrBrand} onChange={setAttrBrand} disabled={!datasetId} />
-                        <SearchableAttrSelect label="Flavor" options={flavors} value={attrFlavor} onChange={setAttrFlavor} disabled={!datasetId} />
-                        <PackTypeSelect options={packTypes} value={attrPackType} onChange={setAttrPackType} disabled={!datasetId} />
-                        <NullableNumberInput label="Units/Pkg" value={attrUnitsPkg} onChange={setAttrUnitsPkg} min={1} disabled={!datasetId} />
-                        <NullableNumberInput label="Pack Size" value={attrPackSize} onChange={setAttrPackSize} min={1} disabled={!datasetId} />
-                        <div className="flex items-end">
-                          <Button variant="outline" size="sm" className="w-full" onClick={clearSkuAttrs}>
-                            Clear All
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                <div className="space-y-1 border-t pt-2">
+                  <h2 className="mb-0.5 text-lg font-semibold">Prediction Controls</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    <CustomerSelect />
+                    <WeekInput />
+                  </div>
+                  <PromotionToggle />
+                </div>
 
-                    <div className="space-y-4 border-t pt-4">
-                      <h2 className="mb-1 text-lg font-semibold">Prediction Controls</h2>
-                      <CustomerSelect />
-                      <PromotionToggle />
-                      <WeekInput />
-                    </div>
+                <div className="border-t pt-2">
+                  <h2 className="mb-1 text-lg font-semibold">Baseline & Price</h2>
+                  <div className="space-y-1">
+                    <BaselinePriceInput />
+                    <PriceSlider />
+                  </div>
+                </div>
 
-                    <div className="border-t pt-4">
-                      <h2 className="mb-3 text-lg font-semibold">Baseline & Price</h2>
-                      <div className="space-y-4">
-                        <BaselinePriceInput />
-                        <PriceSlider />
-                      </div>
-                    </div>
-
-                    <Button className="w-full" disabled={!canSimulate || isFetching} onClick={runNow}>
-                      {isFetching ? "Simulating..." : "Run Simulation"}
-                    </Button>
-                  </>
-                )}
+                <Button className="w-full" disabled={!canSimulate || isFetching} onClick={runNow}>
+                  {isFetching ? "Simulating..." : "Run Simulation"}
+                </Button>
               </div>
 
               <div className="min-w-0 flex-1 space-y-4">
                 <WarningsBanner />
                 <ResultsCard isLoading={isLoading || isFetching} />
-                <PriceRangeCard priceRange={priceRange ?? null} />
+                <PriceRangeCard priceRange={priceRange} />
                 <div className={cn("flex min-w-0 gap-4", isChatOpen ? "flex-col 2xl:flex-row" : "lg:flex-row")}>
                   <div className="min-w-0 flex-1">
                     <DemandCurveChart
                       isLoading={isLoading || isFetching}
-                      priceRange={priceRange ?? null}
+                      priceRange={priceRange}
                       scatterOverlays={scatterOverlays}
                     />
                   </div>

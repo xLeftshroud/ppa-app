@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { SkuItem, SimulateResponse, BaselineResponse } from "@/types/api";
+import type { SkuItem, SimulateResponse, HistoricalPriceResponse, CurvePoint, PriceRange } from "@/types/api";
 
 export type CustomPlot = {
   id: string;
@@ -10,11 +10,6 @@ export type CustomPlot = {
 };
 
 interface AppState {
-  // Dataset
-  datasetId: string | null;
-  rowCount: number | null;
-  skuCount: number | null;
-
   // SKU
   selectedSku: number | null;
   skuAttributes: SkuItem | null;
@@ -29,24 +24,41 @@ interface AppState {
   // Controls
   selectedCustomer: string | null;
   promotionIndicator: 0 | 1;
-  week: number;
+  week: number | null;
 
-  // Baseline
-  baseline: BaselineResponse | null;
-  baselineOverride: number | null;
+  // Historical reference + user's simulation baseline
+  historicalPrice: HistoricalPriceResponse | null;
+  baselinePrice: number | null;
 
   // Price
+  priceInputMode: "direct" | "percentage";
   selectedPriceChangePct: number;
   selectedNewPrice: number | null;
 
   // Results
   simulateResult: SimulateResponse | null;
+  priceRange: PriceRange | null;
+
+  // Committed attrs snapshot (updated only on simulate, used by scatter overlays)
+  committedAttrs: {
+    selectedSku: number | null;
+    attrBrand: string | null;
+    attrFlavor: string | null;
+    attrPackType: string | null;
+    attrPackSize: number | null;
+    attrUnitsPkg: number | null;
+    selectedCustomer: string | null;
+    promotionIndicator: 0 | 1;
+  } | null;
+
+  // Curve cache
+  cachedCurve: CurvePoint[] | null;
+  cachedCurveFingerprint: string | null;
 
   // Custom Plots
   customPlots: CustomPlot[];
 
   // Actions
-  setDataset: (id: string, rows: number, skus: number) => void;
   setSelectedSku: (sku: number | null, attrs: SkuItem | null) => void;
   setAttrBrand: (v: string | null) => void;
   setAttrFlavor: (v: string | null) => void;
@@ -55,12 +67,16 @@ interface AppState {
   setAttrUnitsPkg: (v: number | null) => void;
   setCustomer: (c: string | null) => void;
   setPromotion: (p: 0 | 1) => void;
-  setWeek: (w: number) => void;
-  setBaseline: (bl: BaselineResponse | null) => void;
-  setBaselineOverride: (price: number | null) => void;
+  setWeek: (w: number | null) => void;
+  setHistoricalPrice: (hp: HistoricalPriceResponse | null) => void;
+  setBaselinePrice: (price: number | null) => void;
+  setPriceInputMode: (mode: "direct" | "percentage") => void;
   setPriceChangePct: (pct: number) => void;
   setNewPrice: (price: number | null) => void;
   setSimulateResult: (result: SimulateResponse | null) => void;
+  setPriceRange: (pr: PriceRange | null) => void;
+  commitAttrs: () => void;
+  setCachedCurve: (curve: CurvePoint[], fingerprint: string) => void;
   clearSkuAttrs: () => void;
   addCustomPlot: (plot: CustomPlot) => void;
   updateCustomPlot: (id: string, patch: Partial<CustomPlot>) => void;
@@ -70,9 +86,6 @@ interface AppState {
 }
 
 const initialState = {
-  datasetId: null,
-  rowCount: null,
-  skuCount: null,
   selectedSku: null,
   skuAttributes: null,
   attrBrand: null,
@@ -82,20 +95,22 @@ const initialState = {
   attrUnitsPkg: null,
   selectedCustomer: null,
   promotionIndicator: 0 as const,
-  week: 1,
-  baseline: null,
-  baselineOverride: null,
+  week: null,
+  historicalPrice: null,
+  baselinePrice: null,
+  priceInputMode: "direct" as const,
   selectedPriceChangePct: 0,
   selectedNewPrice: null,
   simulateResult: null,
+  priceRange: null,
+  cachedCurve: null,
+  cachedCurveFingerprint: null,
+  committedAttrs: null,
   customPlots: [],
 };
 
 export const useAppStore = create<AppState>()((set) => ({
   ...initialState,
-
-  setDataset: (id, rows, skus) =>
-    set({ datasetId: id, rowCount: rows, skuCount: skus, selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, simulateResult: null }),
 
   setSelectedSku: (sku, attrs) =>
     set(sku != null
@@ -107,9 +122,10 @@ export const useAppStore = create<AppState>()((set) => ({
           attrPackType: attrs?.pack_type_internal ?? null,
           attrPackSize: attrs?.pack_size_internal ?? null,
           attrUnitsPkg: attrs?.units_per_package_internal ?? null,
-          baseline: null,
-          baselineOverride: null,
-          simulateResult: null,
+          historicalPrice: null,
+          baselinePrice: null,
+          cachedCurve: null,
+          cachedCurveFingerprint: null,
         }
       : {
           selectedSku: null,
@@ -117,27 +133,42 @@ export const useAppStore = create<AppState>()((set) => ({
         },
     ),
 
-  setAttrBrand: (v) => set({ attrBrand: v, selectedSku: null, skuAttributes: null }),
-  setAttrFlavor: (v) => set({ attrFlavor: v, selectedSku: null, skuAttributes: null }),
-  setAttrPackType: (v) => set({ attrPackType: v, selectedSku: null, skuAttributes: null }),
-  setAttrPackSize: (v) => set({ attrPackSize: v, selectedSku: null, skuAttributes: null }),
-  setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null }),
+  setAttrBrand: (v) => set({ attrBrand: v, selectedSku: null, skuAttributes: null, cachedCurve: null, cachedCurveFingerprint: null }),
+  setAttrFlavor: (v) => set({ attrFlavor: v, selectedSku: null, skuAttributes: null, cachedCurve: null, cachedCurveFingerprint: null }),
+  setAttrPackType: (v) => set({ attrPackType: v, selectedSku: null, skuAttributes: null, cachedCurve: null, cachedCurveFingerprint: null }),
+  setAttrPackSize: (v) => set({ attrPackSize: v, selectedSku: null, skuAttributes: null, cachedCurve: null, cachedCurveFingerprint: null }),
+  setAttrUnitsPkg: (v) => set({ attrUnitsPkg: v, selectedSku: null, skuAttributes: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   setCustomer: (c) =>
-    set({ selectedCustomer: c, baseline: null, baselineOverride: null }),
+    set({ selectedCustomer: c, historicalPrice: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
-  setPromotion: (p) => set({ promotionIndicator: p }),
-  setWeek: (w) => set({ week: w }),
+  setPromotion: (p) => set({ promotionIndicator: p, cachedCurve: null, cachedCurveFingerprint: null }),
+  setWeek: (w) => set({ week: w, cachedCurve: null, cachedCurveFingerprint: null }),
 
-  setBaseline: (bl) => set({ baseline: bl }),
-  setBaselineOverride: (price) => set({ baselineOverride: price, simulateResult: null }),
+  setHistoricalPrice: (hp) => set({ historicalPrice: hp }),
+  setBaselinePrice: (price) => set({ baselinePrice: price }),
 
-  setPriceChangePct: (pct) => set({ selectedPriceChangePct: pct, selectedNewPrice: null, simulateResult: null }),
-  setNewPrice: (price) => set({ selectedNewPrice: price, simulateResult: null }),
+  setPriceInputMode: (mode) => set(mode === "percentage" ? { priceInputMode: mode, selectedNewPrice: null } : { priceInputMode: mode }),
+  setPriceChangePct: (pct) => set({ selectedPriceChangePct: pct, selectedNewPrice: null }),
+  setNewPrice: (price) => set({ selectedNewPrice: price }),
 
   setSimulateResult: (result) => set({ simulateResult: result }),
+  setPriceRange: (pr) => set({ priceRange: pr }),
+  commitAttrs: () => set((s) => ({
+    committedAttrs: {
+      selectedSku: s.selectedSku,
+      attrBrand: s.attrBrand,
+      attrFlavor: s.attrFlavor,
+      attrPackType: s.attrPackType,
+      attrPackSize: s.attrPackSize,
+      attrUnitsPkg: s.attrUnitsPkg,
+      selectedCustomer: s.selectedCustomer,
+      promotionIndicator: s.promotionIndicator,
+    },
+  })),
+  setCachedCurve: (curve, fingerprint) => set({ cachedCurve: curve, cachedCurveFingerprint: fingerprint }),
 
-  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, baseline: null, baselineOverride: null, simulateResult: null }),
+  clearSkuAttrs: () => set({ selectedSku: null, skuAttributes: null, attrBrand: null, attrFlavor: null, attrPackType: null, attrPackSize: null, attrUnitsPkg: null, historicalPrice: null, baselinePrice: null, cachedCurve: null, cachedCurveFingerprint: null }),
 
   addCustomPlot: (plot) => set((s) => ({ customPlots: [...s.customPlots, plot] })),
   updateCustomPlot: (id, patch) => set((s) => ({

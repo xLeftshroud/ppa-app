@@ -28,9 +28,9 @@ class CsvSchemaInvalid(AppError):
         super().__init__("CSV_SCHEMA_INVALID", message, 422, details)
 
 
-class BaselineNotFound(AppError):
-    def __init__(self, message: str = "Baseline not found for given SKU and customer"):
-        super().__init__("BASELINE_NOT_FOUND", message, 404)
+class HistoricalPriceNotFound(AppError):
+    def __init__(self, message: str = "Historical price not found for given SKU and customer"):
+        super().__init__("HISTORICAL_PRICE_NOT_FOUND", message, 404)
 
 
 class InferenceError(AppError):

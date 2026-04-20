@@ -40,20 +40,16 @@ function buildFilters(plot: CustomPlot, attrMap: Record<string, string>): Scatte
 
 export function useAllCustomPlotData() {
   const customPlots = useAppStore((s) => s.customPlots);
-  const selectedSku = useAppStore((s) => s.selectedSku);
-  const attrBrand = useAppStore((s) => s.attrBrand);
-  const attrFlavor = useAppStore((s) => s.attrFlavor);
-  const attrPackType = useAppStore((s) => s.attrPackType);
-  const attrPackSize = useAppStore((s) => s.attrPackSize);
-  const attrUnitsPkg = useAppStore((s) => s.attrUnitsPkg);
-  const selectedCustomer = useAppStore((s) => s.selectedCustomer);
-  const promotionIndicator = useAppStore((s) => s.promotionIndicator);
+  const committed = useAppStore((s) => s.committedAttrs);
 
   const visiblePlots = customPlots.filter((p) => p.isVisible);
-  const attrMap = buildAttrMap(
-    selectedSku, attrBrand, attrFlavor, attrPackType,
-    attrPackSize, attrUnitsPkg, selectedCustomer, promotionIndicator,
-  );
+  const attrMap = committed
+    ? buildAttrMap(
+        committed.selectedSku, committed.attrBrand, committed.attrFlavor,
+        committed.attrPackType, committed.attrPackSize, committed.attrUnitsPkg,
+        committed.selectedCustomer, committed.promotionIndicator,
+      )
+    : {};
 
   const queries = useQueries({
     queries: visiblePlots.map((plot) => {

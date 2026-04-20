@@ -2,21 +2,39 @@ import { useAppStore } from "@/store/useAppStore";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
-interface MetricProps {
-  label: string;
-  value: string | number;
-  sub?: string;
-  highlight?: boolean;
-}
-
-function Metric({ label, value, sub, highlight }: MetricProps) {
+function Cell({ label, value, tone, testId }: { label: string; value: string; tone?: number | null; testId?: string }) {
+  const toneClass =
+    tone == null || tone === 0
+      ? ""
+      : tone > 0
+      ? "text-green-600"
+      : "text-red-600";
   return (
     <div className="space-y-0.5">
       <p className="text-xs text-muted-foreground">{label}</p>
-      <p className={`text-lg font-semibold font-mono ${highlight ? "text-primary" : ""}`}>{value}</p>
-      {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      <p className={`text-sm font-semibold font-mono ${toneClass}`} data-testid={testId}>{value}</p>
     </div>
   );
+}
+
+function fmt(v: number | null | undefined, digits = 4): string {
+  if (v == null) return "N/A";
+  return v.toFixed(digits);
+}
+
+function fmtVol(v: number | null | undefined): string {
+  if (v == null) return "N/A";
+  return Math.round(v).toLocaleString();
+}
+
+function fmtPct(v: number | null | undefined): string {
+  if (v == null) return "N/A";
+  return `${v >= 0 ? "+" : ""}${(v * 100).toFixed(2)}%`;
+}
+
+function fmtPctRaw(v: number | null | undefined): string {
+  if (v == null) return "N/A";
+  return `${v >= 0 ? "+" : ""}${v.toFixed(2)}%`;
 }
 
 export function ResultsCard({ isLoading }: { isLoading: boolean }) {
@@ -28,13 +46,8 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
         <CardHeader>
           <CardTitle className="text-lg">Results</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-6 w-24" />
-            </div>
-          ))}
+        <CardContent>
+          <Skeleton className="h-[180px] w-full" />
         </CardContent>
       </Card>
     );
@@ -55,34 +68,54 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
     );
   }
 
-  const { baseline, selected } = result;
-  const deltaColor = selected && selected.delta_volume_units >= 0 ? "text-green-600" : "text-red-600";
+  const { baseline, baseline_elasticity, selected, arc_elasticity } = result;
+
+  // Price row
+  const bPrice = baseline?.price_per_litre ?? null;
+  const nPrice = selected?.new_price_per_litre ?? null;
+  const priceChange = bPrice != null && nPrice != null ? nPrice - bPrice : null;
+  const priceChangePct = bPrice != null && nPrice != null && bPrice !== 0
+    ? ((nPrice - bPrice) / bPrice) * 100
+    : null;
+
+  // Volume row
+  const bVol = baseline?.volume_units ?? null;
+  const nVol = selected?.predicted_volume_units ?? null;
+  const volChange = bVol != null && nVol != null ? nVol - bVol : null;
+  const volChangePct = bVol != null && nVol != null && bVol !== 0
+    ? (nVol - bVol) / bVol
+    : null;
+
+  // Elasticity row
+  const bElast = baseline_elasticity;
+  const nElast = selected?.elasticity ?? null;
+  const elastChange = bElast != null && nElast != null ? nElast - bElast : null;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg">Results</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        <Metric label="Baseline Price" value={baseline ? baseline.price_per_litre.toFixed(4) : "N/A"} sub={baseline ? `Week ${baseline.yearweek}` : "No baseline"} />
-        <Metric label="Baseline Volume" value={baseline ? baseline.volume_units.toLocaleString() : "N/A"} sub={baseline ? "units" : "No baseline"} />
-        <Metric label="New Price" value={selected ? selected.new_price_per_litre.toFixed(4) : "N/A"} sub={selected ? `${selected.price_change_pct > 0 ? "+" : ""}${selected.price_change_pct.toFixed(1)}%` : "No price selected"} highlight={!!selected} />
-        <Metric label="Predicted Volume" value={selected ? Math.round(selected.predicted_volume_units).toLocaleString() : "N/A"} sub={selected ? "units" : "No price selected"} />
-        {selected ? (
-          <div className="space-y-0.5">
-            <p className="text-xs text-muted-foreground">Volume Change</p>
-            <p className={`text-lg font-semibold font-mono ${deltaColor}`}>
-              {selected.delta_volume_units >= 0 ? "+" : ""}
-              {Math.round(selected.delta_volume_units).toLocaleString()}
-            </p>
-            <p className={`text-xs ${deltaColor}`}>
-              {(selected.delta_volume_pct * 100).toFixed(2)}%
-            </p>
-          </div>
-        ) : (
-          <Metric label="Volume Change" value="N/A" sub="No price selected" />
-        )}
-        <Metric label="Elasticity" value={selected ? selected.elasticity.toFixed(4) : "N/A"} />
+      <CardContent>
+        <div className="grid grid-cols-4 gap-x-4 gap-y-3">
+          {/* Row 1: Price */}
+          <Cell label="Baseline Price" value={fmt(bPrice)} />
+          <Cell label="New Price" value={fmt(nPrice)} />
+          <Cell label="Price Change" value={priceChange != null ? `${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(4)}` : "N/A"} tone={priceChange} testId="price-change" />
+          <Cell label="Price Change %" value={priceChangePct != null ? fmtPctRaw(priceChangePct) : "N/A"} tone={priceChangePct} testId="price-change-pct" />
+
+          {/* Row 2: Volume */}
+          <Cell label="Baseline Volume" value={fmtVol(bVol)} />
+          <Cell label="New Volume" value={fmtVol(nVol)} />
+          <Cell label="Volume Change" value={volChange != null ? `${volChange >= 0 ? "+" : ""}${Math.round(volChange).toLocaleString()}` : "N/A"} tone={volChange} testId="volume-change" />
+          <Cell label="Volume Change %" value={fmtPct(volChangePct)} tone={volChangePct} testId="volume-change-pct" />
+
+          {/* Row 3: Elasticity */}
+          <Cell label="Baseline Elasticity" value={fmt(bElast)} />
+          <Cell label="New Price Elasticity" value={fmt(nElast)} />
+          <Cell label="Elasticity Change" value={elastChange != null ? `${elastChange >= 0 ? "+" : ""}${elastChange.toFixed(4)}` : "N/A"} />
+          <Cell label="Arc Elasticity" value={fmt(arc_elasticity)} />
+        </div>
       </CardContent>
     </Card>
   );

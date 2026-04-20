@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import type { SkuItem } from "@/types/api";
 
 export function SkuSelector() {
-  const datasetId = useAppStore((s) => s.datasetId);
   const selectedSku = useAppStore((s) => s.selectedSku);
   const setSelectedSku = useAppStore((s) => s.setSelectedSku);
 
@@ -16,7 +15,7 @@ export function SkuSelector() {
   const attrPackSize = useAppStore((s) => s.attrPackSize);
   const attrUnitsPkg = useAppStore((s) => s.attrUnitsPkg);
 
-  const { data, isLoading } = useSkus(datasetId);
+  const { data, isLoading } = useSkus();
   const items = data?.items ?? [];
 
   const [search, setSearch] = useState(selectedSku != null ? String(selectedSku) : "");
@@ -142,7 +141,7 @@ export function SkuSelector() {
             inputRef.current?.select();
           }}
           onKeyDown={handleKeyDown}
-          disabled={!datasetId || isLoading}
+          disabled={isLoading}
         />
         {open && (
           <div

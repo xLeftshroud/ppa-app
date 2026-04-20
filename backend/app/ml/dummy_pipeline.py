@@ -21,6 +21,9 @@ class DummyDemandModel(BaseEstimator, RegressorMixin):
     def fit(self, X, y=None):  # noqa: ARG002
         return self
 
+    def __sklearn_is_fitted__(self) -> bool:
+        return True
+
     def predict(self, X):
         base_volume = 8000.0
         ref_price = 1.50

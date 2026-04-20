@@ -10,7 +10,6 @@ export interface ChatCustomPlotSummary {
 }
 
 export interface AppStateSnapshot {
-  dataset_id: string | null;
   selected_sku: number | null;
   sku_description: string | null;
   brand: string | null;
@@ -20,10 +19,12 @@ export interface AppStateSnapshot {
   units_pkg: number | null;
   customer: string | null;
   promotion: 0 | 1;
-  week: number;
+  week: number | null;
   baseline_price: number | null;
-  baseline_volume: number | null;
-  baseline_override: number | null;
+  historical_price: number | null;
+  historical_volume: number | null;
+  historical_yearweek: number | null;
+  price_input_mode: "direct" | "percentage";
   price_change_pct: number;
   selected_new_price: number | null;
   has_simulation_result: boolean;
