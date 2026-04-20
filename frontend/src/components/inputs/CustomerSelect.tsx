@@ -17,7 +17,7 @@ export function CustomerSelect() {
         value={selectedCustomer ?? NONE_VALUE}
         onValueChange={(v) => setCustomer(v === NONE_VALUE ? null : v)}
       >
-        <SelectTrigger>
+        <SelectTrigger data-testid="customer-select-trigger">
           <SelectValue placeholder="Select customer" />
         </SelectTrigger>
         <SelectContent>
