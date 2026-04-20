@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import pickle
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -79,8 +79,35 @@ def main():
         (OUTPUTS / f"metrics_hier_bayes{suffix}.json").write_text(json.dumps(m, indent=2))
         print(f"  val metrics: {m}")
 
-    with open(OUTPUTS / f"model_hier_bayes{suffix}.pkl", "wb") as f:
-        pickle.dump({"model": model, "prior": args.prior}, f)
+    import numpyro
+    import arviz as az
+
+    nc_path = OUTPUTS / f"model_hier_bayes{suffix}.nc"
+    meta_path = OUTPUTS / f"metadata_hier_bayes{suffix}.json"
+    model.idata_.to_netcdf(nc_path)
+
+    metadata = {
+        "model_type": "hier_bayes",
+        "prior_scale": args.prior,
+        "num_warmup": int(args.warmup),
+        "num_samples": int(args.draws),
+        "num_chains": int(args.chains),
+        "brand_codes": model._brand_codes_,
+        "sku_codes": model._sku_codes_,
+        "feature_cols": [
+            "log_price_per_litre", "promotion_indicator", "week_sin", "week_cos",
+        ],
+        "trained_at_utc": datetime.now(timezone.utc).isoformat(),
+        "versions": {
+            "python": sys.version.split()[0],
+            "numpyro": numpyro.__version__,
+            "arviz": az.__version__,
+            "numpy": np.__version__,
+            "pandas": pd.__version__,
+        },
+    }
+    meta_path.write_text(json.dumps(metadata, indent=2))
+    print(f"  saved {nc_path} + {meta_path}")
     print("done.")
 
 

@@ -125,6 +125,21 @@ class BayesianHierModel:
         key = jrand.PRNGKey(self.random_state)
         mcmc.run(key, sku_idx, log_price, promo, wsin, wcos, y_arr)
         self.samples_ = {k: np.asarray(v) for k, v in mcmc.get_samples().items()}
+
+        import arviz as az
+        self.idata_ = az.from_numpyro(
+            mcmc,
+            coords={
+                "sku": list(self._sku_codes_.keys()),
+                "brand": list(self._brand_codes_.keys()),
+            },
+            dims={
+                "beta_sku": ["sku"],
+                "alpha_sku": ["sku"],
+                "mu_brand": ["brand"],
+                "sigma_brand": ["brand"],
+            },
+        )
         return self
 
     def elasticity_posterior(self) -> pd.DataFrame:

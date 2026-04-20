@@ -17,12 +17,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import pickle
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
+import sklearn
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -208,11 +210,39 @@ def main():
             json.dumps(test_metrics, indent=2)
         )
 
-    model_path = OUTPUTS / f"model_{model_type}{suffix}.pkl"
-    with open(model_path, "wb") as f:
-        pickle.dump({"model": champion, "feature_cols": feature_cols,
-                     "best_params": best_params}, f)
-    print(f"    saved {model_path}")
+    model_path = OUTPUTS / f"model_{model_type}{suffix}.joblib"
+    meta_path = OUTPUTS / f"metadata_{model_type}{suffix}.json"
+
+    joblib.dump(champion, model_path)
+
+    versions = {
+        "python": sys.version.split()[0],
+        "sklearn": sklearn.__version__,
+        "numpy": np.__version__,
+        "pandas": pd.__version__,
+    }
+    if model_type == "xgb":
+        import xgboost
+        versions["xgboost"] = xgboost.__version__
+    elif model_type == "lgb":
+        import lightgbm
+        versions["lightgbm"] = lightgbm.__version__
+
+    metadata = {
+        "model_type": model_type,
+        "feature_cols": list(feature_cols),
+        "best_params": {
+            k: (v if isinstance(v, (int, float, str, bool)) else str(v))
+            for k, v in best_params.items()
+        },
+        "train_end_week": int(df_dev["continuous_week"].max()),
+        "n_train_rows": int(len(df_dev)),
+        "seeds": list(args.seeds),
+        "trained_at_utc": datetime.now(timezone.utc).isoformat(),
+        "versions": versions,
+    }
+    meta_path.write_text(json.dumps(metadata, indent=2))
+    print(f"    saved {model_path} + {meta_path}")
     print("done.")
 
 
