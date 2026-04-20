@@ -10,7 +10,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from .evaluate import wmape
+from .evaluate import metrics_table
 from .models.elastic_net import ElasticNetModel
 from .models.rf import RFModel
 from .models.xgb import XGBModel
@@ -19,13 +19,25 @@ from .models.lgb import LGBModel
 
 MODEL_TYPES = ("elastic_net", "rf", "xgb", "lgb")
 
+SUPPORTED_METRICS = (
+    "wmape", "rmse", "rmse_log", "rmsle", "mape", "smape", "r2", "r2_log",
+)
+_MAXIMIZE = {"r2", "r2_log"}   # Optuna minimizes → negate these
 
-def _mean_cv_wmape_with(model_builder, df_dev, y_dev, folds, feature_cols, passes_val=False):
-    """Train model on each fold's train, predict on val, return mean WMAPE across folds.
 
-    ``passes_val=True`` means the builder's fit() accepts X_val/y_val for early stopping.
+def _mean_cv_score(
+    model_builder, df_dev, y_dev, folds, feature_cols,
+    passes_val=False, metric="rmse",
+):
+    """Train model on each fold's train, predict on val, return mean `metric`.
+
+    Uses `metrics_table` to compute all metrics in one pass; extracts the
+    requested one. r2 / r2_log are maximized → negated so Optuna can minimize.
     """
-    vol_true = np.expm1(y_dev)
+    if metric not in SUPPORTED_METRICS:
+        raise ValueError(
+            f"unsupported metric: {metric}. Choose from {SUPPORTED_METRICS}"
+        )
     scores = []
     for tr_idx, va_idx in folds:
         X_tr = df_dev.iloc[tr_idx][feature_cols]
@@ -38,9 +50,9 @@ def _mean_cv_wmape_with(model_builder, df_dev, y_dev, folds, feature_cols, passe
             model.fit(X_tr, y_tr, X_val=X_va, y_val=y_va)
         else:
             model.fit(X_tr, y_tr)
-        pred_log = model.predict(X_va)
-        pred_vol = np.clip(np.expm1(pred_log), 0, None)
-        scores.append(wmape(vol_true[va_idx], pred_vol))
+        m = metrics_table(y_va, model.predict(X_va))
+        val = m[metric]
+        scores.append(-val if metric in _MAXIMIZE else val)
     return float(np.mean(scores))
 
 
@@ -106,11 +118,12 @@ def build_objective(
     folds: list,
     feature_cols: list[str],
     seed: int = 42,
+    metric: str = "rmse",
 ) -> Callable:
     """Return an Optuna objective closure for `model_type`.
 
-    The objective reports mean WMAPE across all CV folds on the validation
-    portion of each fold. Tuning then minimizes this value.
+    The objective reports mean `metric` across all CV folds on the validation
+    portion of each fold. Tuning then minimizes this value (r2 is negated).
     """
     if model_type not in _SUGGESTERS:
         raise ValueError(
@@ -120,8 +133,9 @@ def build_objective(
 
     def objective(trial) -> float:
         model_builder = lambda: suggester(trial, seed)
-        return _mean_cv_wmape_with(
-            model_builder, df_dev, y_dev, folds, feature_cols, passes_val=passes_val
+        return _mean_cv_score(
+            model_builder, df_dev, y_dev, folds, feature_cols,
+            passes_val=passes_val, metric=metric,
         )
 
     return objective
@@ -137,6 +151,7 @@ def run_tuning(
     timeout_sec: int = 3600,
     study_name: str | None = None,
     storage: str | None = None,
+    metric: str = "rmse",
 ) -> dict:
     """Run a full Optuna study and return best params + study object."""
     import optuna
@@ -146,11 +161,13 @@ def run_tuning(
     study = optuna.create_study(
         direction="minimize",
         sampler=sampler,
-        study_name=study_name or f"{model_type}_seed{seed}",
+        study_name=study_name or f"{model_type}_{metric}_seed{seed}",
         storage=storage,
         load_if_exists=True,
     )
-    obj = build_objective(model_type, df_dev, y_dev, folds, feature_cols, seed=seed)
+    obj = build_objective(
+        model_type, df_dev, y_dev, folds, feature_cols, seed=seed, metric=metric,
+    )
     study.optimize(obj, timeout=timeout_sec, show_progress_bar=False)
     return {
         "best_params": study.best_params,

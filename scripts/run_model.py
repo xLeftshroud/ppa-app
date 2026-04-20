@@ -104,7 +104,7 @@ def pick_features(df_dev: pd.DataFrame, model_type: str) -> list[str]:
         candidate_cols=candidates,
         y=y_fs,
         model_type=model_type,
-        do_stability=True,  # turn to False if stability takes too long for quick run
+        do_stability=False,  # turn to False if stability takes too long for quick run
     )
     final_numeric = result["final"]
     # always include categoricals for tree models
@@ -120,6 +120,12 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="+", default=SEEDS)
     ap.add_argument("--skip-tune", action="store_true")
     ap.add_argument("--output-suffix", default="")
+    ap.add_argument(
+        "--metric",
+        choices=["wmape", "rmse", "rmse_log", "rmsle", "mape", "smape", "r2", "r2_log"],
+        default="rmse",
+        help="Optuna tuning objective (minimize). r2/r2_log are negated internally.",
+    )
     args = ap.parse_args()
 
     model_type = args.model
@@ -148,8 +154,9 @@ def main():
             model_type, df_dev, y_dev, folds, feature_cols,
             seed=args.seeds[0], timeout_sec=args.timeout,
             storage=f"sqlite:///{OUTPUTS / 'optuna.db'}",
+            metric=args.metric,
         )
-        print(f"    best_value={tune['best_value']:.4f} in {tune['n_trials']} trials")
+        print(f"    best {args.metric}={tune['best_value']:.4f} in {tune['n_trials']} trials")
         best_params = tune["best_params"]
     else:
         best_params = {}
