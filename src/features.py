@@ -83,8 +83,8 @@ def add_panel_features(
     out["log_volume_lag1"] = grp["log_volume"].shift(1)
     out["log_volume_lag4"] = grp["log_volume"].shift(4)
     # within-panel bfill so all models see identical non-NaN inputs
-    # out["log_volume_lag1"] = grp["log_volume_lag1"].bfill()
-    # out["log_volume_lag4"] = grp["log_volume_lag4"].bfill()
+    out["log_volume_lag1"] = grp["log_volume"].shift(1).bfill()
+    out["log_volume_lag4"] = grp["log_volume"].shift(4).bfill()
 
     return out
 
