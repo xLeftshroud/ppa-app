@@ -1,0 +1,14 @@
+node_modules
+dist
+.vite
+test-results
+playwright-report
+coverage
+.env
+.env.local
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+.DS_Store
