@@ -73,8 +73,8 @@ The backend reads settings from `backend/.env` (see `backend/.env.example`). All
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `MODEL_PATH` | `models/pipeline.joblib` | Path to trained ML pipeline |
-| `METADATA_PATH` | `models/metadata.json` | Path to model metadata JSON |
+| `MODEL_PATH` | `artifacts/pipeline.joblib` | Path to trained ML pipeline |
+| `METADATA_PATH` | `artifacts/metadata.json` | Path to model metadata JSON |
 | `TRAINING_DATA_PATH` | `data/dataset.csv` | Path to training CSV (used for catalog, historical prices, per-SKU price quantiles) |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173` | Comma-separated allowed CORS origins |
 | `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
@@ -120,9 +120,9 @@ Week features are derived: `week_sin = sin(2π·week/52)`, `week_cos = cos(2π·
 2. Save it:
    ```python
    import joblib
-   joblib.dump(pipeline, "backend/models/pipeline.joblib")
+   joblib.dump(pipeline, "backend/artifacts/pipeline.joblib")
    ```
-3. Update `backend/models/metadata.json` with the correct `model_name`, `model_version`, `features` list, and `price_per_litre` quantile thresholds (`p1`, `p99`).
+3. Update `backend/artifacts/metadata.json` with the correct `model_name`, `model_version`, `features` list.
 4. Restart the backend — it will auto-detect and load the real pipeline.
 
 ## Price Range Shading
