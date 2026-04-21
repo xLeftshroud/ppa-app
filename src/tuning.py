@@ -20,7 +20,8 @@ from .models.lgb import LGBModel
 MODEL_TYPES = ("elastic_net", "rf", "xgb", "lgb")
 
 SUPPORTED_METRICS = (
-    "wmape", "rmse", "rmse_log", "rmsle", "mape", "smape", "r2", "r2_log",
+    "rmse", "rmse_log", "rmsle", "r2", "r2_log",
+    "mape", "smape", "wmape", "mae", "mae_log",
 )
 _MAXIMIZE = {"r2", "r2_log"}   # Optuna minimizes → negate these
 
@@ -66,10 +67,11 @@ def _suggest_elastic_net(trial, seed):
 
 def _suggest_rf(trial, seed):
     return RFModel(
-        n_estimators=trial.suggest_int("n_estimators", 200, 800, step=100),
-        max_depth=trial.suggest_int("max_depth", 5, 30),
+        max_iter=trial.suggest_int("max_iter", 200, 800, step=100),
+        max_depth=trial.suggest_int("max_depth", 3, 12),
         min_samples_leaf=trial.suggest_int("min_samples_leaf", 5, 50),
-        max_features=trial.suggest_categorical("max_features", ["sqrt", "log2", 0.5, 0.8]),
+        learning_rate=trial.suggest_float("learning_rate", 1e-2, 0.3, log=True),
+        l2_regularization=trial.suggest_float("l2_regularization", 1e-8, 10.0, log=True),
         random_state=seed,
     )
 
@@ -80,6 +82,7 @@ def _suggest_xgb(trial, seed):
         max_depth=trial.suggest_int("max_depth", 3, 10),
         learning_rate=trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
         min_child_weight=trial.suggest_float("min_child_weight", 1.0, 20.0),
+        gamma=trial.suggest_float("gamma", 0.0, 5.0),
         subsample=trial.suggest_float("subsample", 0.5, 1.0),
         colsample_bytree=trial.suggest_float("colsample_bytree", 0.5, 1.0),
         reg_alpha=trial.suggest_float("reg_alpha", 1e-8, 10.0, log=True),

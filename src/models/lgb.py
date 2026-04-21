@@ -15,6 +15,8 @@ import pandas as pd
 from .preprocess import cast_categoricals
 from ..config import CATEGORICAL_COLS
 
+MONOTONIC_PRICE_FEAT = "price_per_litre"
+
 
 @dataclass
 class LGBModel:
@@ -44,6 +46,9 @@ class LGBModel:
         self._cat_cols_ = cats
         return cast_categoricals(X[cols], cats)
 
+    def _build_monotone(self, feature_order: list[str]) -> list[int]:
+        return [-1 if f == MONOTONIC_PRICE_FEAT else 0 for f in feature_order]
+
     def fit(
         self,
         X: pd.DataFrame,
@@ -55,6 +60,7 @@ class LGBModel:
 
         Xp = self._prepare(X)
         self._feature_order_ = list(Xp.columns)
+        mono = self._build_monotone(self._feature_order_)
         self.est_ = lgb.LGBMRegressor(
             num_leaves=self.num_leaves,
             max_depth=self.max_depth,
@@ -68,6 +74,8 @@ class LGBModel:
             n_estimators=self.n_estimators,
             random_state=self.random_state,
             n_jobs=self.n_jobs,
+            monotone_constraints=mono,
+            monotone_constraints_method="intermediate",
             verbose=-1,
         )
         fit_kwargs = {"categorical_feature": self._cat_cols_}

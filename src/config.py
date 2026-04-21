@@ -13,9 +13,10 @@ TEST_WEEK_RATIO = 0.20
 TUNING_WALLCLOCK_SEC = 3600
 TUNING_MAX_TRIALS = 1000
 
-# RF cardinality split: <= threshold uses one-hot, > threshold uses target encoding.
-# Other models don't need this: XGB/LGB native, Elastic Net always TE.
-RF_HIGH_CARD_THRESHOLD = 20
+# Elastic Net cardinality split: <= threshold uses one-hot, > threshold uses target encoding.
+# TE on low-card cats inflates collinearity with log_price and absorbs the elasticity signal,
+# so we one-hot anything that fits cheaply and only fall back to TE for high-card columns.
+EN_HIGH_CARD_THRESHOLD = 20
 
 TARGET = "log_nielsen_total_volume"
 TIME_COL = "continuous_week"
@@ -50,8 +51,8 @@ CANDIDATE_FEATURES = [
 PROTECTED_FEATURES = [
     "price_per_litre",
     "log_price_per_litre",
-    "promotion_indicator",
-    "pack_size_internal",
-    "units_per_package_internal",
-    "continuous_week",
+    # "promotion_indicator",
+    # "pack_size_internal",
+    # "units_per_package_internal",
+    # "continuous_week",
 ]

@@ -105,7 +105,8 @@ def main():
     ap.add_argument("--output-suffix", default="")
     ap.add_argument(
         "--metric",
-        choices=["wmape", "rmse", "rmse_log", "rmsle", "mape", "smape", "r2", "r2_log"],
+        choices=["rmse", "rmse_log", "rmsle", "r2", "r2_log",
+                 "mape", "smape", "wmape", "mae", "mae_log"],
         default="rmse",
         help="Optuna tuning objective (minimize). r2/r2_log are negated internally.",
     )
@@ -173,16 +174,45 @@ def main():
         else:
             print(f"    {out_path} already exists, skip")
 
+    # Industry-standard refit: pick n_rounds* = median of per-fold best_iteration
+    # (from early stopping with best_params), then refit on ALL dev data with
+    # that fixed n_estimators and NO early stopping. Avoids losing the latest
+    # weeks of data that a holdout-based refit would sacrifice.
+    n_rounds_star: int | None = None
+    TUNE_MAX_ROUNDS = 2000  # matches n_estimators cap in _suggest_xgb / _suggest_lgb
+    if passes_val and not args.skip_tune:
+        print(f"[5.5/6] Collecting best_iteration per fold using best params...")
+        best_iters: list[int] = []
+        for fi, (tr_idx, va_idx) in enumerate(folds, start=1):
+            m_tmp = model_cls(
+                **best_params,
+                n_estimators=TUNE_MAX_ROUNDS,
+                random_state=args.seeds[0],
+                feature_cols=feature_cols,
+            )
+            m_tmp.fit(
+                df_dev.iloc[tr_idx][feature_cols], y_dev[tr_idx],
+                X_val=df_dev.iloc[va_idx][feature_cols], y_val=y_dev[va_idx],
+            )
+            bi = getattr(m_tmp.est_, "best_iteration", None)
+            if bi is None:
+                bi = getattr(m_tmp.est_, "best_iteration_", None)
+            bi = int(bi) if bi is not None else TUNE_MAX_ROUNDS
+            best_iters.append(bi)
+            print(f"    fold {fi}: best_iteration={bi}")
+        n_rounds_star = int(np.median(best_iters))
+        print(f"    n_rounds* = median({best_iters}) = {n_rounds_star}")
+
     print(f"[6/6] Fit champion on all dev data + extract elasticity + test holdout...")
-    champion = model_cls(**best_params, random_state=args.seeds[0], feature_cols=feature_cols)
-    if passes_val:
-        tr_idx, va_idx = folds[-1]
-        champion.fit(
-            df_dev.iloc[tr_idx][feature_cols], y_dev[tr_idx],
-            X_val=df_dev.iloc[va_idx][feature_cols], y_val=y_dev[va_idx],
-        )
-    else:
-        champion.fit(df_dev[feature_cols], y_dev)
+    champion_params = dict(best_params)
+    if n_rounds_star is not None:
+        champion_params["n_estimators"] = n_rounds_star
+    champion = model_cls(
+        **champion_params,
+        random_state=args.seeds[0],
+        feature_cols=feature_cols,
+    )
+    champion.fit(df_dev[feature_cols], y_dev)
 
     if model_type == "elastic_net":
         elast = elastic_net_elasticity(champion, df_dev)
@@ -226,6 +256,7 @@ def main():
             k: (v if isinstance(v, (int, float, str, bool)) else str(v))
             for k, v in best_params.items()
         },
+        "n_rounds_star": n_rounds_star,
         "train_end_week": int(df_dev["continuous_week"].max()),
         "n_train_rows": int(len(df_dev)),
         "seeds": list(args.seeds),

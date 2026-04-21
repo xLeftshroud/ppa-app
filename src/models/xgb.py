@@ -15,7 +15,7 @@ import xgboost as xgb
 from .preprocess import cast_categoricals
 from ..config import CATEGORICAL_COLS
 
-MONOTONIC_PRICE_FEAT = "log_price_per_litre"
+MONOTONIC_PRICE_FEAT = "price_per_litre"
 
 
 @dataclass
@@ -24,6 +24,7 @@ class XGBModel:
     max_depth: int = 6
     learning_rate: float = 0.05
     min_child_weight: float = 5.0
+    gamma: float = 0.0
     subsample: float = 0.8
     colsample_bytree: float = 0.8
     reg_alpha: float = 0.0
@@ -60,6 +61,7 @@ class XGBModel:
             max_depth=self.max_depth,
             learning_rate=self.learning_rate,
             min_child_weight=self.min_child_weight,
+            gamma=self.gamma,
             subsample=self.subsample,
             colsample_bytree=self.colsample_bytree,
             reg_alpha=self.reg_alpha,

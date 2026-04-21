@@ -25,6 +25,11 @@ def rmse(y_true, y_pred) -> float:
     return float(np.sqrt(np.mean((y - yh) ** 2)))
 
 
+def mae(y_true, y_pred) -> float:
+    y, yh = _to_arr(y_true), _to_arr(y_pred)
+    return float(np.mean(np.abs(y - yh)))
+
+
 def mape(y_true, y_pred, eps: float = 1.0) -> float:
     y, yh = _to_arr(y_true), _to_arr(y_pred)
     return float(np.mean(np.abs((y - yh) / np.maximum(np.abs(y), eps))))
@@ -80,14 +85,16 @@ def metrics_table(
     yh_vol = np.clip(yh_vol, a_min=0.0, a_max=None)
 
     out = {
-        "wmape": wmape(y_vol, yh_vol),
-        "rmse_log": rmse(y_true_log, y_pred_log),
         "rmse": rmse(y_vol, yh_vol),
+        "rmse_log": rmse(y_true_log, y_pred_log),
         "rmsle": rmsle(y_vol, yh_vol),
-        "mape": mape(y_vol, yh_vol),
-        "smape": smape(y_vol, yh_vol),
         "r2": r2_score(y_vol, yh_vol),
         "r2_log": r2_score(y_true_log, y_pred_log),
+        "mape": mape(y_vol, yh_vol),
+        "smape": smape(y_vol, yh_vol),
+        "wmape": wmape(y_vol, yh_vol),
+        "mae": mae(y_vol, yh_vol),
+        "mae_log": mae(y_true_log, y_pred_log),
     }
     if train_time_sec is not None:
         out["train_time_sec"] = float(train_time_sec)
