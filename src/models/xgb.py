@@ -1,18 +1,20 @@
-"""XGBoost regressor with monotonic constraint on log_price_per_litre.
+"""XGBoost regressor with monotonic constraint on price_per_litre.
 
-The monotone constraint forces d(y_hat)/d(log_price_per_litre) <= 0,
-guaranteeing negative own-price elasticity -- critical for PPA credibility
-since a predicted POSITIVE elasticity would be economically nonsensical.
+Wrapped in a sklearn Pipeline whose preprocessor uses OneHot + TargetEncoder
+(no native categorical). The monotone constraint is anchored to the column
+name "price_per_litre" via XGB's dict form, which survives preprocessing
+because `verbose_feature_names_out=False` preserves numeric column names.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.pipeline import Pipeline
 
-from .preprocess import cast_categoricals
+from .preprocess import build_encoder
 from ..config import CATEGORICAL_COLS
 
 MONOTONIC_PRICE_FEAT = "price_per_litre"
@@ -35,28 +37,23 @@ class XGBModel:
     feature_cols: list[str] | None = None
 
     def __post_init__(self):
+        self.pipeline_: Pipeline | None = None
         self.est_: xgb.XGBRegressor | None = None
         self._feature_order_: list[str] | None = None
 
-    def _prepare(self, X: pd.DataFrame) -> pd.DataFrame:
-        cols = self.feature_cols or list(X.columns)
+    def _split_cols(self, cols: list[str]) -> tuple[list[str], list[str]]:
         cats = [c for c in CATEGORICAL_COLS if c in cols]
-        return cast_categoricals(X[cols], cats)
+        nums = [c for c in cols if c not in cats]
+        return nums, cats
 
-    def _build_monotone(self, feature_order: list[str]) -> tuple[int, ...]:
-        return tuple(-1 if f == MONOTONIC_PRICE_FEAT else 0 for f in feature_order)
-
-    def fit(
-        self,
-        X: pd.DataFrame,
-        y: np.ndarray,
-        X_val: pd.DataFrame | None = None,
-        y_val: np.ndarray | None = None,
-    ) -> "XGBModel":
-        Xp = self._prepare(X)
-        self._feature_order_ = list(Xp.columns)
-        mono = self._build_monotone(self._feature_order_)
-        kwargs = dict(
+    def _build(self, X: pd.DataFrame) -> Pipeline:
+        cols = self.feature_cols or list(X.columns)
+        nums, cats = self._split_cols(cols)
+        prep = build_encoder(
+            X[cols], cat_cols=cats, num_cols=nums,
+            high_card_threshold=20, scale_numeric=False,
+        )
+        model = xgb.XGBRegressor(
             n_estimators=self.n_estimators,
             max_depth=self.max_depth,
             learning_rate=self.learning_rate,
@@ -69,23 +66,41 @@ class XGBModel:
             random_state=self.random_state,
             n_jobs=self.n_jobs,
             tree_method="hist",
-            enable_categorical=True,
-            monotone_constraints=mono,
+            monotone_constraints={MONOTONIC_PRICE_FEAT: -1},
         )
-        self.est_ = xgb.XGBRegressor(**kwargs)
-        fit_kwargs = {}
+        return Pipeline([("prep", prep), ("model", model)])
+
+    def fit(
+        self,
+        X: pd.DataFrame,
+        y: np.ndarray,
+        X_val: pd.DataFrame | None = None,
+        y_val: np.ndarray | None = None,
+    ) -> "XGBModel":
+        cols = self.feature_cols or list(X.columns)
+        X = X[cols]
+        self.pipeline_ = self._build(X)
+        prep = self.pipeline_.named_steps["prep"]
+        model = self.pipeline_.named_steps["model"]
+
         if X_val is not None and y_val is not None:
-            Xvp = self._prepare(X_val).reindex(columns=self._feature_order_)
-            fit_kwargs["eval_set"] = [(Xvp, y_val)]
-            fit_kwargs["verbose"] = False
-            # set early stopping via constructor kwarg in xgboost>=2.0
-            self.est_.set_params(early_stopping_rounds=self.early_stopping_rounds)
-        self.est_.fit(Xp, y, **fit_kwargs)
+            # Fit preprocessor on train, transform both sets, then fit XGB
+            # separately so eval_set can be passed with early stopping.
+            prep.fit(X, y)
+            Xp = prep.transform(X)
+            Xvp = prep.transform(X_val[cols])
+            model.set_params(early_stopping_rounds=self.early_stopping_rounds)
+            model.fit(Xp, y, eval_set=[(Xvp, y_val)], verbose=False)
+        else:
+            self.pipeline_.fit(X, y)
+
+        self.est_ = model
+        self._feature_order_ = list(prep.get_feature_names_out())
         return self
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
-        Xp = self._prepare(X).reindex(columns=self._feature_order_)
-        return self.est_.predict(Xp)
+        cols = self.feature_cols or list(X.columns)
+        return self.pipeline_.predict(X[cols])
 
     @property
     def feature_importance_(self) -> pd.Series:

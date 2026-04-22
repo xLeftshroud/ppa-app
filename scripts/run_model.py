@@ -52,6 +52,7 @@ from src.models.elastic_net import ElasticNetModel
 from src.models.rf import RFModel
 from src.models.xgb import XGBModel
 from src.models.lgb import LGBModel
+from src.models.export import export_champion
 
 
 MODEL_CLASSES = {
@@ -237,7 +238,11 @@ def main():
     model_path = OUTPUTS / f"model_{model_type}{suffix}.joblib"
     meta_path = OUTPUTS / f"metadata_{model_type}{suffix}.json"
 
-    joblib.dump(champion, model_path)
+    # Save a self-contained sklearn TransformedTargetRegressor that returns
+    # raw nielsen_total_volume (not log). Callers need only sklearn+xgb+lgb
+    # installed -- no import of src.models.* required at load time.
+    y_raw = np.expm1(y_dev)
+    export_champion(champion, df_dev[feature_cols], y_raw, model_path)
 
     versions = {
         "python": sys.version.split()[0],
@@ -265,6 +270,11 @@ def main():
         "seeds": list(args.seeds),
         "trained_at_utc": datetime.now(timezone.utc).isoformat(),
         "versions": versions,
+        # Contract for downstream app consumers:
+        "target": "nielsen_total_volume",
+        "target_transform": "log1p",
+        "predict_returns": "raw_volume",
+        "schema_version": 2,
     }
     meta_path.write_text(json.dumps(metadata, indent=2))
     print(f"    saved {model_path} + {meta_path}")
