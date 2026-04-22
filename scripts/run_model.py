@@ -41,7 +41,7 @@ from src.config import (
 from src.features import build_features
 from src.split import expanding_window_cv, final_holdout_split
 from src.feature_selection import run_full_pipeline
-from src.tuning import run_tuning
+from src.tuning import run_tuning, XGB_MAX_ROUNDS, LGB_MAX_ROUNDS
 from src.experiments import run_across_seeds
 from src.baselines import naive_predict, seasonal_naive_predict
 from src.experiments import run_baseline_across_seeds
@@ -179,14 +179,17 @@ def main():
     # that fixed n_estimators and NO early stopping. Avoids losing the latest
     # weeks of data that a holdout-based refit would sacrifice.
     n_rounds_star: int | None = None
-    TUNE_MAX_ROUNDS = 2000  # matches n_estimators cap in _suggest_xgb / _suggest_lgb
     if passes_val and not args.skip_tune:
+        # Match the per-model ceiling used during tuning so early stopping
+        # has the same headroom when we replay best_params to collect
+        # best_iteration per fold.
+        ceiling = XGB_MAX_ROUNDS if model_type == "xgb" else LGB_MAX_ROUNDS
         print(f"[5.5/6] Collecting best_iteration per fold using best params...")
         best_iters: list[int] = []
         for fi, (tr_idx, va_idx) in enumerate(folds, start=1):
             m_tmp = model_cls(
                 **best_params,
-                n_estimators=TUNE_MAX_ROUNDS,
+                n_estimators=ceiling,
                 random_state=args.seeds[0],
                 feature_cols=feature_cols,
             )
@@ -197,7 +200,7 @@ def main():
             bi = getattr(m_tmp.est_, "best_iteration", None)
             if bi is None:
                 bi = getattr(m_tmp.est_, "best_iteration_", None)
-            bi = int(bi) if bi is not None else TUNE_MAX_ROUNDS
+            bi = int(bi) if bi is not None else ceiling
             best_iters.append(bi)
             print(f"    fold {fi}: best_iteration={bi}")
         n_rounds_star = int(np.median(best_iters))

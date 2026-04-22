@@ -22,7 +22,7 @@ MONOTONIC_PRICE_FEAT = "price_per_litre"
 
 @dataclass
 class RFModel:
-    max_iter: int = 500
+    max_iter: int = 1500
     max_depth: int | None = None
     min_samples_leaf: int = 20
     learning_rate: float = 0.1
@@ -48,6 +48,9 @@ class RFModel:
         Xp = self._prepare(X)
         self._feature_order_ = list(Xp.columns)
         mono = self._build_monotone(self._feature_order_)
+        # Internal early stopping: HistGBR holds out `validation_fraction`
+        # of the training rows, monitors validation loss, and halts after
+        # `n_iter_no_change` non-improving rounds. `max_iter` is the ceiling.
         self.est_ = HistGradientBoostingRegressor(
             max_iter=self.max_iter,
             max_depth=self.max_depth,
@@ -56,6 +59,9 @@ class RFModel:
             l2_regularization=self.l2_regularization,
             monotonic_cst=mono,
             categorical_features="from_dtype",
+            early_stopping=True,
+            n_iter_no_change=50,
+            validation_fraction=0.1,
             random_state=self.random_state,
         )
         self.est_.fit(Xp, y)

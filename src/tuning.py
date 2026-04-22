@@ -19,6 +19,14 @@ from .models.lgb import LGBModel
 
 MODEL_TYPES = ("elastic_net", "rf", "xgb", "lgb")
 
+# Per-model boosting-round ceiling during tuning. Early stopping inside each
+# model's fit() picks the real best_iteration per fold -- these are just the
+# upper bound. Calibrated to each model's learning_rate search range so even
+# the lowest-lr trials can reach convergence before hitting the ceiling.
+XGB_MAX_ROUNDS = 3000   # lr search [1e-3, 0.3]
+LGB_MAX_ROUNDS = 3000   # lr search [1e-3, 0.3]
+RF_MAX_ROUNDS = 1500    # lr search [1e-2, 0.3], HistGBR with internal early stopping
+
 SUPPORTED_METRICS = (
     "rmse", "rmse_log", "rmsle", "r2", "r2_log",
     "mape", "smape", "wmape", "mae", "mae_log",
@@ -66,8 +74,10 @@ def _suggest_elastic_net(trial, seed):
 
 
 def _suggest_rf(trial, seed):
+    # max_iter fixed at ceiling; HistGBR's internal early stopping
+    # (configured in RFModel.fit) picks the real round count per trial.
     return RFModel(
-        max_iter=trial.suggest_int("max_iter", 200, 800, step=100),
+        max_iter=RF_MAX_ROUNDS,
         max_depth=trial.suggest_int("max_depth", 3, 12),
         min_samples_leaf=trial.suggest_int("min_samples_leaf", 5, 50),
         learning_rate=trial.suggest_float("learning_rate", 1e-2, 0.3, log=True),
@@ -78,7 +88,7 @@ def _suggest_rf(trial, seed):
 
 def _suggest_xgb(trial, seed):
     return XGBModel(
-        n_estimators=2000,
+        n_estimators=XGB_MAX_ROUNDS,
         max_depth=trial.suggest_int("max_depth", 3, 10),
         learning_rate=trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
         min_child_weight=trial.suggest_float("min_child_weight", 1.0, 20.0),
@@ -93,7 +103,7 @@ def _suggest_xgb(trial, seed):
 
 def _suggest_lgb(trial, seed):
     return LGBModel(
-        n_estimators=2000,
+        n_estimators=LGB_MAX_ROUNDS,
         num_leaves=trial.suggest_int("num_leaves", 15, 255),
         max_depth=trial.suggest_int("max_depth", -1, 15),
         learning_rate=trial.suggest_float("learning_rate", 1e-3, 0.3, log=True),
