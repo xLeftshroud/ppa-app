@@ -33,9 +33,14 @@ _ATTR_FIELDS = [
 
 
 def _filter_features(df, metadata_features: list[str]):
-    """Keep only the columns that the pipeline expects (from metadata.json)."""
-    cols = [c for c in metadata_features if c in df.columns]
-    return df[cols]
+    """Keep only the columns the pipeline expects; raise if any required feature is missing."""
+    missing = [c for c in metadata_features if c not in df.columns]
+    if missing:
+        raise ValidationError(
+            message="Missing required features for prediction",
+            details=missing,
+        )
+    return df[metadata_features]
 
 
 def _compute_elasticity(
@@ -43,9 +48,9 @@ def _compute_elasticity(
 ) -> float:
     """Compute elasticity at a price point using single-sided +0.001 differential."""
     p_plus = price + ELASTICITY_DP
+    df = build_feature_df([price, p_plus], customer, promotion, week, attrs, continuous_week)
+    df = _filter_features(df, metadata_features)
     try:
-        df = build_feature_df([price, p_plus], customer, promotion, week, attrs, continuous_week)
-        df = _filter_features(df, metadata_features)
         vols = pipeline.predict(df)
         v0 = float(vols[0])
         v_plus = float(vols[1])
@@ -100,11 +105,11 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         baseline_price = req.baseline_override_price_per_litre
         baseline_yearweek = bl_raw["yearweek"] if bl_raw else None
         # Predict volume at the user-input baseline price
+        bl_df = build_feature_df([baseline_price], req.customer,
+                                 req.promotion_indicator, req.week, attrs,
+                                 continuous_week)
+        bl_df = _filter_features(bl_df, metadata_features)
         try:
-            bl_df = build_feature_df([baseline_price], req.customer,
-                                     req.promotion_indicator, req.week, attrs,
-                                     continuous_week)
-            bl_df = _filter_features(bl_df, metadata_features)
             baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
         except Exception as exc:
             raise InferenceError(f"Baseline volume prediction failed: {exc}")
@@ -131,11 +136,11 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         p = round(p + CURVE_PRICE_STEP, 3)
 
     # Batch predict for entire curve
+    curve_df = build_feature_df(all_prices, req.customer,
+                                req.promotion_indicator, req.week, attrs,
+                                continuous_week)
+    curve_df = _filter_features(curve_df, metadata_features)
     try:
-        curve_df = build_feature_df(all_prices, req.customer,
-                                    req.promotion_indicator, req.week, attrs,
-                                    continuous_week)
-        curve_df = _filter_features(curve_df, metadata_features)
         curve_volumes = pipeline.predict(curve_df)
     except Exception as exc:
         raise InferenceError(f"Curve prediction failed: {exc}")
@@ -176,11 +181,11 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
                 raise ValidationError("Cannot use percentage-based pricing without a baseline. Provide selected_new_price_per_litre or a baseline_override_price_per_litre.")
 
         # Predict V0
+        v0_df = build_feature_df([p0], req.customer,
+                                 req.promotion_indicator, req.week, attrs,
+                                 continuous_week)
+        v0_df = _filter_features(v0_df, metadata_features)
         try:
-            v0_df = build_feature_df([p0], req.customer,
-                                     req.promotion_indicator, req.week, attrs,
-                                     continuous_week)
-            v0_df = _filter_features(v0_df, metadata_features)
             v0 = float(pipeline.predict(v0_df)[0])
         except Exception as exc:
             raise InferenceError(f"Selected-point prediction failed: {exc}")
@@ -276,11 +281,11 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
     sel_vol: Optional[float] = None
 
     if req.baseline_price is not None:
+        bl_df = build_feature_df([req.baseline_price], req.customer,
+                                 req.promotion_indicator, req.week, attrs,
+                                 continuous_week)
+        bl_df = _filter_features(bl_df, metadata_features)
         try:
-            bl_df = build_feature_df([req.baseline_price], req.customer,
-                                     req.promotion_indicator, req.week, attrs,
-                                     continuous_week)
-            bl_df = _filter_features(bl_df, metadata_features)
             bl_vol = float(pipeline.predict(bl_df)[0])
         except Exception as exc:
             raise InferenceError(f"Baseline prediction failed: {exc}")
@@ -296,11 +301,11 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
         )
 
     if req.selected_price is not None:
+        sel_df = build_feature_df([req.selected_price], req.customer,
+                                  req.promotion_indicator, req.week, attrs,
+                                  continuous_week)
+        sel_df = _filter_features(sel_df, metadata_features)
         try:
-            sel_df = build_feature_df([req.selected_price], req.customer,
-                                      req.promotion_indicator, req.week, attrs,
-                                      continuous_week)
-            sel_df = _filter_features(sel_df, metadata_features)
             sel_vol = float(pipeline.predict(sel_df)[0])
         except Exception as exc:
             raise InferenceError(f"Selected prediction failed: {exc}")

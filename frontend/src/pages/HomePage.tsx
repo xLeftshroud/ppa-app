@@ -64,10 +64,11 @@ export function HomePage() {
 
   useEffect(() => {
     if (error instanceof ApiError) {
+      const detailsStr = error.details.length > 0 ? `: ${error.details.join(", ")}` : "";
       toast({
         variant: "destructive",
         title: `Error: ${error.code}`,
-        description: `${error.message} (request_id: ${error.request_id})`,
+        description: `${error.message}${detailsStr} (request_id: ${error.request_id})`,
       });
     }
   }, [error]);
