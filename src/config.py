@@ -22,7 +22,7 @@ TIME_COL = "continuous_week"
 DISPLAY_TIME_COL = "yearweek"
 PANEL_KEYS = ["product_sku_code", "customer"]
 
-# catagorical features that put into the training mode, they are not passed into the feature selection flow
+# # catagorical features that put into the training mode they are not passed into the feature selection flow
 CATEGORICAL_COLS = [
     # "product_sku_code",
     "customer",
