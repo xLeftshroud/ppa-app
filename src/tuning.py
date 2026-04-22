@@ -35,7 +35,7 @@ _MAXIMIZE = {"r2", "r2_log"}   # Optuna minimizes → negate these
 
 
 def _mean_cv_score(
-    model_builder, df_dev, y_dev, folds, feature_cols,
+    trial, model_builder, df_dev, y_dev, folds, feature_cols,
     passes_val=False, metric="rmse",
     y_fit=None, expects_raw=False,
 ):
@@ -47,14 +47,19 @@ def _mean_cv_score(
     internal expm1 recovers raw values for the output columns.
 
     r2 / r2_log are maximized → negated so Optuna can minimize.
+
+    Reports the running mean score to Optuna after each fold so the study's
+    pruner can kill obviously-bad trials before all folds run.
     """
+    import optuna  # local import keeps tuning module import cheap
+
     if metric not in SUPPORTED_METRICS:
         raise ValueError(
             f"unsupported metric: {metric}. Choose from {SUPPORTED_METRICS}"
         )
     y_for_fit = y_fit if y_fit is not None else y_dev
     scores = []
-    for tr_idx, va_idx in folds:
+    for fi, (tr_idx, va_idx) in enumerate(folds):
         X_tr = df_dev.iloc[tr_idx][feature_cols]
         y_tr = y_for_fit[tr_idx]
         X_va = df_dev.iloc[va_idx][feature_cols]
@@ -72,6 +77,11 @@ def _mean_cv_score(
         m = metrics_table(y_va_log, pred)
         val = m[metric]
         scores.append(-val if metric in _MAXIMIZE else val)
+
+        trial.report(float(np.mean(scores)), fi)
+        if trial.should_prune():
+            raise optuna.TrialPruned()
+
     return float(np.mean(scores))
 
 
@@ -167,7 +177,7 @@ def build_objective(
     def objective(trial) -> float:
         model_builder = lambda: suggester(trial, seed, objective_name)
         return _mean_cv_score(
-            model_builder, df_dev, y_dev, folds, feature_cols,
+            trial, model_builder, df_dev, y_dev, folds, feature_cols,
             passes_val=passes_val, metric=metric,
             y_fit=y_fit, expects_raw=expects_raw,
         )
@@ -196,9 +206,19 @@ def run_tuning(
 
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     sampler = optuna.samplers.TPESampler(seed=seed)
+    # Fold-level MedianPruner: after each CV fold, if the running mean is
+    # worse than the median of completed trials at the same fold index, the
+    # trial is pruned. n_startup_trials=5 collects baseline stats before
+    # pruning kicks in; n_warmup_steps=1 gives every trial at least one fold.
+    pruner = optuna.pruners.MedianPruner(
+        n_startup_trials=5,
+        n_warmup_steps=1,
+        interval_steps=1,
+    )
     study = optuna.create_study(
         direction="minimize",
         sampler=sampler,
+        pruner=pruner,
         study_name=study_name or f"{model_type}_{objective_name}_{metric}_seed{seed}",
         storage=storage,
         load_if_exists=True,
