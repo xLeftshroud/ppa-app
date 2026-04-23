@@ -25,7 +25,7 @@ _TEST_METADATA = {
     "model_name": "DummyDemandModel",
     "model_version": "test",
     "features_version": "v1",
-    "features": [
+    "feature_cols": [
         "price_per_litre",
         "customer",
         "promotion_indicator",

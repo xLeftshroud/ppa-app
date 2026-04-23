@@ -4,7 +4,7 @@
   "description": "Log-log constant-elasticity fallback model (epsilon=-1.8). Used when real pipeline.joblib is unavailable.",
   "sklearn_version": "1.8.0",
   "is_fallback": true,
-  "features": [
+  "feature_cols": [
     "price_per_litre",
     "customer",
     "promotion_indicator",

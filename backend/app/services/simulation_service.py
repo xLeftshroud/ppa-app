@@ -33,24 +33,24 @@ _ATTR_FIELDS = [
 ]
 
 
-def _filter_features(df, metadata_features: list[str]):
+def _filter_features(df, feature_cols: list[str]):
     """Keep only the columns the pipeline expects; raise if any required feature is missing."""
-    missing = [c for c in metadata_features if c not in df.columns]
+    missing = [c for c in feature_cols if c not in df.columns]
     if missing:
         raise ValidationError(
             message="Missing required features for prediction",
             details=missing,
         )
-    return df[metadata_features]
+    return df[feature_cols]
 
 
 def _compute_elasticity(
-    price: float, pipeline, metadata_features, attrs
+    price: float, pipeline, feature_cols, attrs
 ) -> float:
     """Compute elasticity at a price point using single-sided +0.001 differential."""
     p_plus = price + ELASTICITY_DP
     df = build_feature_df([price, p_plus], attrs)
-    df = _filter_features(df, metadata_features)
+    df = _filter_features(df, feature_cols)
     try:
         vols = pipeline.predict(df)
         v0 = float(vols[0])
@@ -67,7 +67,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
     df = get_dataset()
     pipeline = get_pipeline()
     metadata = get_metadata()
-    metadata_features: list[str] = metadata.get("features", [])
+    feature_cols: list[str] = metadata.get("feature_cols", [])
 
     # Derive continuous_week: max from dataset + 1 (next unseen week)
     if "continuous_week" in df.columns:
@@ -109,7 +109,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
         baseline_yearweek = bl_raw["yearweek"] if bl_raw else None
         # Predict volume at the user-input baseline price
         bl_df = build_feature_df([baseline_price], attrs)
-        bl_df = _filter_features(bl_df, metadata_features)
+        bl_df = _filter_features(bl_df, feature_cols)
         try:
             baseline_volume = int(round(float(pipeline.predict(bl_df)[0])))
         except Exception as exc:
@@ -117,7 +117,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
         # Compute baseline elasticity
         baseline_elast = _compute_elasticity(
-            baseline_price, pipeline, metadata_features, attrs,
+            baseline_price, pipeline, feature_cols, attrs,
         )
 
     # Build baseline response object if we have price data
@@ -137,7 +137,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
     # Batch predict for entire curve
     curve_df = build_feature_df(all_prices, attrs)
-    curve_df = _filter_features(curve_df, metadata_features)
+    curve_df = _filter_features(curve_df, feature_cols)
     try:
         curve_volumes = pipeline.predict(curve_df)
     except Exception as exc:
@@ -180,7 +180,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
         # Predict V0
         v0_df = build_feature_df([p0], attrs)
-        v0_df = _filter_features(v0_df, metadata_features)
+        v0_df = _filter_features(v0_df, feature_cols)
         try:
             v0 = float(pipeline.predict(v0_df)[0])
         except Exception as exc:
@@ -188,7 +188,7 @@ def run_simulation(req: SimulateRequest) -> SimulateResponse:
 
         # Elasticity at selected price (single-sided +0.001)
         elasticity = _compute_elasticity(
-            p0, pipeline, metadata_features, attrs,
+            p0, pipeline, feature_cols, attrs,
         )
 
         # Delta from baseline (0 if no baseline)
@@ -250,7 +250,7 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
     df = get_dataset()
     pipeline = get_pipeline()
     metadata = get_metadata()
-    metadata_features: list[str] = metadata.get("features", [])
+    feature_cols: list[str] = metadata.get("feature_cols", [])
 
     if "continuous_week" in df.columns:
         continuous_week = int(df["continuous_week"].max()) + 1
@@ -279,14 +279,14 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
 
     if req.baseline_price is not None:
         bl_df = build_feature_df([req.baseline_price], attrs)
-        bl_df = _filter_features(bl_df, metadata_features)
+        bl_df = _filter_features(bl_df, feature_cols)
         try:
             bl_vol = float(pipeline.predict(bl_df)[0])
         except Exception as exc:
             raise InferenceError(f"Baseline prediction failed: {exc}")
 
         bl_elast = _compute_elasticity(
-            req.baseline_price, pipeline, metadata_features, attrs,
+            req.baseline_price, pipeline, feature_cols, attrs,
         )
         baseline_pred = PointPrediction(
             price_per_litre=round(req.baseline_price, 6),
@@ -296,14 +296,14 @@ def predict_points(req: PredictPointsRequest) -> PredictPointsResponse:
 
     if req.selected_price is not None:
         sel_df = build_feature_df([req.selected_price], attrs)
-        sel_df = _filter_features(sel_df, metadata_features)
+        sel_df = _filter_features(sel_df, feature_cols)
         try:
             sel_vol = float(pipeline.predict(sel_df)[0])
         except Exception as exc:
             raise InferenceError(f"Selected prediction failed: {exc}")
 
         sel_elast = _compute_elasticity(
-            req.selected_price, pipeline, metadata_features, attrs,
+            req.selected_price, pipeline, feature_cols, attrs,
         )
         selected_pred = PointPrediction(
             price_per_litre=round(req.selected_price, 6),

@@ -75,7 +75,7 @@ The backend reads settings from `backend/.env` (see `backend/.env.example`). All
 |----------|---------|-------------|
 | `MODEL_PATH` | `artifacts/pipeline.joblib` | Path to trained ML pipeline |
 | `METADATA_PATH` | `artifacts/metadata.json` | Path to model metadata JSON |
-| `TRAINING_DATA_PATH` | `data/dataset.csv` | Path to training CSV (used for catalog, historical prices, per-SKU price quantiles) |
+| `TRAINING_DATA_PATH` | `artifacts/dataset.csv` | Path to training CSV (used for catalog, historical prices, per-SKU price quantiles) |
 | `CORS_ORIGINS` | `http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173` | Comma-separated allowed CORS origins |
 | `LOG_LEVEL` | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) |
 | `LLM_PROVIDER` | `openai` | Chat provider (`openai` or `ollama`) |
@@ -102,9 +102,12 @@ For local Ollama:
 
 On startup, the backend calls `joblib.load(MODEL_PATH)`. If that fails, it falls back to `DummyDemandModel` (log-log model, `V = 8000 * (price/1.50)^(-1.8)` with customer / promo / seasonal multipliers).
 
-**Feature filtering**: The backend reads the `features` list from `metadata.json` and passes only those columns to `pipeline.predict(df)`. The frontend is free to send additional fields (e.g., `product_sku_code`) — `simulation_service._filter_features()` drops any column not listed in the metadata, so the API contract stays stable while the model's feature set evolves.
+**Feature filtering & validation**: The backend reads the `feature_cols` list from `metadata.json` and passes only those columns to `pipeline.predict(df)`. `simulation_service._filter_features()` does two things:
 
-The current `dummy_metadata.json` declares these features:
+1. **Drops extras** — columns in the DataFrame that aren't in `feature_cols` (e.g., `product_sku_code`, `material_medium_description`) are silently removed, so the frontend can keep sending extra context without breaking predictions.
+2. **Fails fast on missing** — if the DataFrame is missing any column listed in `feature_cols`, the request is rejected with **HTTP 422 `VALIDATION_ERROR`** and the missing column names are returned in `error.details`. This converts what would otherwise be a cryptic 500 from sklearn into a clear "you didn't send field X" error for the frontend.
+
+The current `dummy_metadata.json` declares these feature columns:
 
 ```
 price_per_litre, customer, promotion_indicator, top_brand, flavor_internal,
@@ -112,7 +115,20 @@ pack_size_internal, units_per_package_internal, pack_type_internal,
 continuous_week, week_sin, week_cos
 ```
 
-Week features are derived: `week_sin = sin(2π·week/52)`, `week_cos = cos(2π·week/52)`, `continuous_week = max(dataset.continuous_week) + 1`.
+### Derived features
+
+All derivations live in [`backend/app/utils/feature_builder.py`](backend/app/utils/feature_builder.py) and are computed inside `build_feature_df()` after the raw attributes are assembled into rows. They're applied unconditionally when their source columns are present; `_filter_features` then keeps only the ones listed in `metadata.feature_cols`.
+
+| Derived column | Formula | Source columns | Note |
+|---|---|---|---|
+| `week_sin` | `sin(2π·week/52)` | `week` | Raw `week` is dropped after derivation. |
+| `week_cos` | `cos(2π·week/52)` | `week` | Same. |
+| `continuous_week` | `max(dataset.continuous_week) + 1` | (derived server-side in `simulation_service`) | Represents the "next unseen week". |
+| `pack_size_total` | `pack_size_internal × units_per_package_internal` | both pack columns | Total ml per package. |
+| `pack_tier` | categorical: `single_serve` / `multi_pack_take_home` / `large_format` / `other` | both pack columns | Rule-based classification (see `pack_tier()` for thresholds). |
+| `log_price_per_litre` | `log(max(price_per_litre, 1e-6))` | `price_per_litre` | Always added (price is always present). |
+
+All helpers follow the same `df: pd.DataFrame → pd.Series` signature as the training-side feature engineering, so training and inference share one implementation.
 
 ## Replacing the Dummy Pipeline with a Real Model
 
@@ -122,7 +138,7 @@ Week features are derived: `week_sin = sin(2π·week/52)`, `week_cos = cos(2π·
    import joblib
    joblib.dump(pipeline, "backend/artifacts/pipeline.joblib")
    ```
-3. Update `backend/artifacts/metadata.json` with the correct `model_name`, `model_version`, `features` list.
+3. Update `backend/artifacts/metadata.json` with the correct `model_name`, `model_version`, `feature_cols` list.
 4. Restart the backend — it will auto-detect and load the real pipeline.
 
 ## Price Range Shading
