@@ -56,6 +56,11 @@ export function InfoDialog() {
 
         {data && (
           <div className="space-y-3">
+            {data.using_dummy_pipeline && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                Real pipeline failed to load — backend is using <strong>DummyDemandModel</strong>. The paths below are from <code>.env</code> (failed); <code>model_type</code> / <code>feature_cols</code> reflect the dummy fallback.
+              </div>
+            )}
             <Row label="Metadata file" value={data.metadata_path} />
             <Row label="Model file" value={data.model_path} />
             <Row label="Dataset file" value={data.training_data_path} />

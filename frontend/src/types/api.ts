@@ -138,4 +138,5 @@ export interface InfoResponse {
   training_data_path: string;
   model_type: string | null;
   feature_cols: string[];
+  using_dummy_pipeline: boolean;
 }

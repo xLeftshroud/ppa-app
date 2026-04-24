@@ -1,5 +1,5 @@
 {
-  "model_name": "dummy_demand_model",
+  "model_type": "dummy_demand_model",
   "model_version": "0.1.0",
   "description": "Log-log constant-elasticity fallback model (epsilon=-1.8). Used when real pipeline.joblib is unavailable.",
   "sklearn_version": "1.8.0",

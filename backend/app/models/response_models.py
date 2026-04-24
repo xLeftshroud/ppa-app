@@ -82,3 +82,4 @@ class InfoResponse(BaseModel):
     training_data_path: str
     model_type: Optional[str] = None
     feature_cols: list[str] = []
+    using_dummy_pipeline: bool = False

@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from app.config import settings
 from app.models.response_models import InfoResponse
-from app.services.pipeline_service import get_metadata
+from app.services.pipeline_service import get_metadata, is_using_dummy
 
 router = APIRouter(tags=["info"])
 
@@ -18,4 +18,5 @@ def get_info() -> InfoResponse:
         training_data_path=settings.training_data_path,
         model_type=md.get("model_type"),
         feature_cols=md.get("feature_cols", []),
+        using_dummy_pipeline=is_using_dummy(),
     )
