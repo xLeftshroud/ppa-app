@@ -73,3 +73,12 @@ class SimulateResponse(BaseModel):
     selected: Optional[SelectedResult] = None
     arc_elasticity: Optional[float] = None
     curve: list[CurvePoint]
+
+
+class InfoResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    model_path: str
+    metadata_path: str
+    training_data_path: str
+    model_type: Optional[str] = None
+    feature_cols: list[str] = []

@@ -8,7 +8,7 @@ from app.services.pipeline_service import load_pipeline
 from app.services.price_range_service import load_training_csv
 from app.utils.error_handler import RequestIdMiddleware, register_exception_handlers
 from app.utils.logging_config import setup_logging
-from app.routers import catalog, historical_price, simulate, predict_points, price_range, scatter, chat
+from app.routers import catalog, historical_price, simulate, predict_points, price_range, scatter, chat, info
 
 
 setup_logging()
@@ -41,6 +41,7 @@ app.include_router(predict_points.router, prefix="/v1")
 app.include_router(price_range.router, prefix="/v1")
 app.include_router(scatter.router, prefix="/v1")
 app.include_router(chat.router, prefix="/v1")
+app.include_router(info.router, prefix="/v1")
 
 
 @app.get("/health")

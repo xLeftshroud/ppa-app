@@ -131,3 +131,11 @@ export interface ScatterResponse {
   points: ScatterPoint[];
   count: number;
 }
+
+export interface InfoResponse {
+  model_path: string;
+  metadata_path: string;
+  training_data_path: string;
+  model_type: string | null;
+  feature_cols: string[];
+}
