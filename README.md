@@ -3,7 +3,7 @@
 Full-stack web app for price elasticity analysis and demand simulation. Select a SKU, customer, week, and promotion, then explore the predicted demand curve and local elasticity metrics.
 
 - **Backend**: Python FastAPI + scikit-learn (port 8000)
-- **Frontend**: React 18 + TypeScript + Vite + ECharts (port 5173)
+- **Frontend**: React 18 + TypeScript + Vite + ECharts + shadcn/ui + TanStack Query + Zustand (port 5173)
 
 ## Quick Start (Docker)
 
@@ -100,7 +100,9 @@ For local Ollama:
 
 ## ML Pipeline
 
-On startup, the backend calls `joblib.load(MODEL_PATH)`. If that fails, it falls back to `DummyDemandModel` (log-log model, `V = 8000 * (price/1.50)^(-1.8)` with customer / promo / seasonal multipliers).
+On startup, the backend calls `joblib.load(MODEL_PATH)` and reads `METADATA_PATH`. If either fails, it falls back to an in-memory `DummyDemandModel` (log-log model, `V = 8000 * (price/1.50)^(-1.8)` with customer / promo / seasonal multipliers) **and** loads `app/ml/dummy_metadata.json` instead of the configured metadata file. The original `.env` paths are not modified — `settings.model_path` / `settings.metadata_path` still report the (failed) configured values.
+
+A boolean flag `using_dummy_pipeline` is exposed via [`GET /v1/info`](#api-endpoints) so the frontend can warn the user when the real pipeline failed to load. The header "?" button in the UI surfaces this in a dialog (along with the configured paths and the `model_type` / `feature_cols` from whichever metadata was actually loaded).
 
 **Feature filtering & validation**: The backend reads the `feature_cols` list from `metadata.json` and passes only those columns to `pipeline.predict(df)`. `simulation_service._filter_features()` does two things:
 
@@ -171,6 +173,7 @@ All endpoints are prefixed with `/v1` except `/health`.
 | GET | `/v1/skus/{sku}/price-range` | Per-SKU price quantiles (p1/p5/p50/p95/p99) |
 | GET | `/v1/chat/providers` | Enabled chat providers and default selection |
 | POST | `/v1/chat` | Send a chat message (supports tool calls into simulation/optimization) |
+| GET | `/v1/info` | Backend config snapshot: configured `MODEL_PATH` / `METADATA_PATH` / `TRAINING_DATA_PATH`, plus `model_type` and `feature_cols` from the loaded metadata, plus a `using_dummy_pipeline` flag |
 
 All error responses follow:
 ```json
