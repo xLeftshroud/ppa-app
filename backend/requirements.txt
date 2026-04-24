@@ -1,12 +1,18 @@
 fastapi
 uvicorn[standard]
-pandas
-numpy
-scikit-learn
-joblib
 python-multipart
 pydantic
 pydantic-settings
 python-dotenv
-xgboost
 openai>=1.0.0
+
+# ML core (required to unpickle any model_*.joblib)
+joblib>=1.4.2
+numpy>=2.3.0
+pandas>=2.3.0
+scipy>=1.15.0
+scikit-learn>=1.7.0
+
+# Boosters (required to load lgb_* / xgb_* artifacts)
+lightgbm>=4.6.0
+xgboost>=3.0.0
