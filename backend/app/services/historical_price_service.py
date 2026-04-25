@@ -19,5 +19,5 @@ def get_historical_price(df: pd.DataFrame, product_sku_code: int, customer: str)
     return {
         "yearweek": int(latest["yearweek"]),
         "price_per_litre": float(latest["price_per_litre"]),
-        "volume_units": int(latest["nielsen_total_volume"]),
+        "volume_units": int(round(float(latest["volume_in_litres"]))),
     }

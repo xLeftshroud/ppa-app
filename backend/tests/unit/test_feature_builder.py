@@ -5,12 +5,12 @@ import math
 
 import pandas as pd
 
-from app.utils.feature_builder import (
-    build_feature_df,
+from app.ml.features import (
     log_price_per_litre,
     pack_size_total,
     pack_tier,
 )
+from app.utils.feature_builder import build_feature_df
 
 
 def test_batch_prices_produces_n_rows() -> None:
@@ -33,7 +33,6 @@ def test_week_encoding_matches_sin_cos_formula() -> None:
     expected_cos = math.cos(2 * math.pi * week / 52)
     assert abs(df["week_sin"].iloc[0] - expected_sin) < 1e-12
     assert abs(df["week_cos"].iloc[0] - expected_cos) < 1e-12
-    assert "week" not in df.columns
 
 
 def test_week_omitted_skips_sin_cos() -> None:

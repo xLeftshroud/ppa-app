@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from app.config import settings
+from app.ml.features import build_features
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +30,19 @@ def load_training_csv() -> None:
 
     full_df = pd.read_csv(csv_path)
 
-    for col in ("product_sku_code", "price_per_litre"):
+    raw_required = (
+        "product_sku_code",
+        "price_per_item",
+        "nielsen_total_volume",
+        "pack_size_internal",
+        "units_per_package_internal",
+        "yearweek",
+    )
+    for col in raw_required:
         if col not in full_df.columns:
             raise ValueError(f"Training CSV missing required column: {col}")
+
+    full_df = build_features(full_df)
 
     # Retain full DataFrame for scatter overlay queries
     _training_df = full_df

@@ -124,7 +124,7 @@ export interface ScatterRequest {
 
 export interface ScatterPoint {
   price_per_litre: number;
-  nielsen_total_volume: number;
+  volume_in_litres: number;
 }
 
 export interface ScatterResponse {

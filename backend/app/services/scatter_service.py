@@ -43,11 +43,11 @@ def get_scatter_points(filters: list[ScatterFilter]) -> tuple[list[ScatterPoint]
         else:
             mask = mask & (df[f.column].astype(str) == f.value)
 
-    filtered = df.loc[mask, ["price_per_litre", "nielsen_total_volume"]].dropna()
+    filtered = df.loc[mask, ["price_per_litre", "volume_in_litres"]].dropna()
     points = [
         ScatterPoint(
             price_per_litre=float(row.price_per_litre),
-            nielsen_total_volume=float(row.nielsen_total_volume),
+            volume_in_litres=float(row.volume_in_litres),
         )
         for row in filtered.itertuples()
     ]

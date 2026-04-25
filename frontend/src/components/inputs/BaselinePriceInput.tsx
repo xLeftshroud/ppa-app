@@ -69,7 +69,7 @@ export function BaselinePriceInput() {
 
       {historicalPrice && (
         <p className="text-xs text-muted-foreground">
-          Historical: {historicalPrice.price_per_litre.toFixed(4)} / {historicalPrice.volume_units.toLocaleString()} units (week {historicalPrice.yearweek})
+          Historical: {historicalPrice.price_per_litre.toFixed(4)} / {historicalPrice.volume_units.toLocaleString()} L (week {historicalPrice.yearweek})
         </p>
       )}
     </div>

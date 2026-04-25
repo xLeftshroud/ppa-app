@@ -70,7 +70,7 @@ export function DemandCurveChart({
     for (const overlay of scatterOverlaysRef.current) {
       for (const pt of overlay.points) {
         if (pt.price_per_litre >= xMin && pt.price_per_litre <= xMax) {
-          volumes.push(pt.nielsen_total_volume);
+          volumes.push(pt.volume_in_litres);
         }
       }
     }
@@ -200,7 +200,7 @@ export function DemandCurveChart({
     yAxis: [
       {
         type: "value" as const,
-        name: "Volume (units)",
+        name: "Volume (L)",
         nameLocation: "middle" as const,
         nameGap: 55,
         scale: true,
@@ -272,7 +272,7 @@ export function DemandCurveChart({
         type: "scatter" as const,
         name: overlay.title,
         yAxisIndex: 0,
-        data: overlay.points.map((p) => [p.price_per_litre, p.nielsen_total_volume]),
+        data: overlay.points.map((p) => [p.price_per_litre, p.volume_in_litres]),
         itemStyle: { color: overlay.color, opacity: 0.6 },
         symbolSize: 6,
         tooltip: { show: false },
