@@ -40,11 +40,11 @@ def optimize_revenue(
 
     return {
         "optimal_price_per_litre": round(best_price, 4),
-        "volume_at_optimal": round(best_volume, 2),
+        "volume_in_litres_at_optimal": round(best_volume, 2),
         "max_revenue": round(best_revenue, 2),
         "baseline_revenue": baseline_revenue,
         "baseline_price": resp.baseline.price_per_litre if resp.baseline else None,
-        "baseline_volume": resp.baseline.volume_units if resp.baseline else None,
+        "baseline_volume_in_litres": resp.baseline.volume_units if resp.baseline else None,
         "search_min_price": min_price,
         "search_max_price": max_price,
         "warnings": resp.warnings,
