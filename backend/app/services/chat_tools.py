@@ -676,8 +676,8 @@ def execute_tool(
                 if bl_vol != 0:
                     summary["delta_volume_units"] = round(sel_vol - bl_vol, 2)
                     summary["delta_volume_pct"] = round((sel_vol - bl_vol) / bl_vol, 6)
-                summary["baseline_revenue"] = compute_revenue(bl_price, bl_vol, req.pack_size_internal, req.units_per_package_internal)
-                summary["selected_revenue"] = compute_revenue(sel_price, sel_vol, req.pack_size_internal, req.units_per_package_internal)
+                summary["baseline_revenue"] = compute_revenue(bl_price, bl_vol)
+                summary["selected_revenue"] = compute_revenue(sel_price, sel_vol)
             if resp.arc_elasticity is not None:
                 summary["arc_elasticity"] = resp.arc_elasticity
             return json.dumps(summary), ui_actions
@@ -719,14 +719,14 @@ def execute_tool(
                 if resp.baseline:
                     s["baseline_price"] = resp.baseline.price_per_litre
                     s["baseline_volume"] = resp.baseline.volume_units
-                    s["baseline_revenue"] = compute_revenue(resp.baseline.price_per_litre, resp.baseline.volume_units, req.pack_size_internal, req.units_per_package_internal)
+                    s["baseline_revenue"] = compute_revenue(resp.baseline.price_per_litre, resp.baseline.volume_units)
                 if resp.selected:
                     s["new_price"] = resp.selected.new_price_per_litre
                     s["predicted_volume"] = resp.selected.predicted_volume_units
                     s["delta_volume_units"] = resp.selected.delta_volume_units
                     s["delta_volume_pct"] = resp.selected.delta_volume_pct
                     s["elasticity"] = resp.selected.elasticity
-                    s["revenue"] = compute_revenue(resp.selected.new_price_per_litre, resp.selected.predicted_volume_units, req.pack_size_internal, req.units_per_package_internal)
+                    s["revenue"] = compute_revenue(resp.selected.new_price_per_litre, resp.selected.predicted_volume_units)
                 results[key] = s
             return json.dumps(results), ui_actions
 

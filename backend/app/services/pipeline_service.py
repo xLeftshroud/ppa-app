@@ -42,7 +42,7 @@ def load_pipeline() -> None:
             _metadata = json.load(f)
         _using_dummy = True
 
-    logger.info("Loaded metadata: model=%s version=%s", _metadata.get("model_name"), _metadata.get("model_version"))
+    logger.info("Loaded metadata: model type=%s objective=%s", _metadata.get("model_type"), _metadata.get("objective"))
 
 
 def get_pipeline() -> Pipeline:
