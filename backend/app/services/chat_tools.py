@@ -59,7 +59,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "get_historical_price",
-            "description": "Get the most recent historical price and volume for a SKU at a specific customer (yearweek, price_per_litre, volume_units). This is reference data from training records — NOT the user's current simulation baseline input.",
+            "description": "Get the most recent historical price and volume for a SKU at a specific customer. Returns yearweek, price_per_litre, and volume_in_litres (litres sold that week). This is reference data from training records — NOT the user's current simulation baseline input.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -74,7 +74,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "run_simulation",
-            "description": "Run a price-volume simulation. Returns baseline, predicted volume at the selected price, volume change, elasticity, and the full demand curve. You MUST provide at least one price input (selected_new_price_per_litre or selected_price_change_pct) to get a selected-point result with elasticity.",
+            "description": "Run a price-volume simulation. Returns baseline, predicted volume (in litres) at the selected price, volume change, elasticity, and the full demand curve. You MUST provide at least one price input (selected_new_price_per_litre or selected_price_change_pct) to get a selected-point result with elasticity.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -99,7 +99,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "predict_at_price",
-            "description": "Lightweight prediction at 1-2 price points WITHOUT regenerating the demand curve. Returns predicted volume, elasticity, revenue, and delta at the baseline price and/or a selected price. Use this instead of run_simulation when you only need volume/elasticity at specific prices and the curve is not needed. Much faster than run_simulation.",
+            "description": "Lightweight prediction at 1-2 price points WITHOUT regenerating the demand curve. Returns predicted volume (in litres), elasticity, revenue, and delta at the baseline price and/or a selected price. Use this instead of run_simulation when you only need volume/elasticity at specific prices and the curve is not needed. Much faster than run_simulation.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -169,7 +169,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "compare_scenarios",
-            "description": "Compare two simulation scenarios side by side. Returns baseline, predicted volume, elasticity, and revenue for both, plus the difference. Use this for comparisons between SKUs, customers, promo on/off, etc.",
+            "description": "Compare two simulation scenarios side by side. Returns baseline, predicted volume (in litres), elasticity, and revenue for both, plus the difference. Use this for comparisons between SKUs, customers, promo on/off, etc.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -222,7 +222,7 @@ TOOL_DEFINITIONS: list[dict] = [
         "type": "function",
         "function": {
             "name": "optimize_revenue",
-            "description": "Find the price that maximizes revenue (gross sales: volume_units x price_per_item) for the given configuration. Optionally restrict the search to a price range (e.g. p5–p95 from get_price_range). Returns optimal price, volume, revenue, and comparison to baseline revenue.",
+            "description": "Find the price that maximizes revenue (gross sales: price_per_litre x volume_in_litres) for the given configuration. Optionally restrict the search to a price range (e.g. p5–p95 from get_price_range). Returns optimal price, volume, revenue, and comparison to baseline revenue if a baseline is set.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -637,14 +637,14 @@ def execute_tool(
             if resp.baseline:
                 summary["baseline"] = {
                     "price_per_litre": resp.baseline.price_per_litre,
-                    "volume_units": resp.baseline.volume_units,
+                    "volume_in_litres": resp.baseline.volume_units,
                     "yearweek": resp.baseline.yearweek,
                 }
             if resp.selected:
                 summary["selected"] = {
                     "new_price_per_litre": resp.selected.new_price_per_litre,
-                    "predicted_volume_units": resp.selected.predicted_volume_units,
-                    "delta_volume_units": resp.selected.delta_volume_units,
+                    "predicted_volume_in_litres": resp.selected.predicted_volume_units,
+                    "delta_volume_in_litres": resp.selected.delta_volume_units,
                     "delta_volume_pct": resp.selected.delta_volume_pct,
                     "elasticity": resp.selected.elasticity,
                     "price_change_pct": resp.selected.price_change_pct,
@@ -659,25 +659,28 @@ def execute_tool(
             if resp.baseline:
                 summary["baseline"] = {
                     "price_per_litre": resp.baseline.price_per_litre,
-                    "predicted_volume_units": resp.baseline.predicted_volume,
+                    "predicted_volume_in_litres": resp.baseline.predicted_volume,
                     "elasticity": resp.baseline.elasticity,
                 }
             if resp.selected:
                 summary["selected"] = {
                     "price_per_litre": resp.selected.price_per_litre,
-                    "predicted_volume_units": resp.selected.predicted_volume,
+                    "predicted_volume_in_litres": resp.selected.predicted_volume,
                     "elasticity": resp.selected.elasticity,
                 }
-            if resp.baseline and resp.selected:
+            if resp.baseline:
+                summary["baseline_revenue"] = compute_revenue(
+                    resp.baseline.price_per_litre, resp.baseline.predicted_volume
+                )
+            if resp.selected:
+                summary["selected_revenue"] = compute_revenue(
+                    resp.selected.price_per_litre, resp.selected.predicted_volume
+                )
+            if resp.baseline and resp.selected and resp.baseline.predicted_volume != 0:
                 bl_vol = resp.baseline.predicted_volume
                 sel_vol = resp.selected.predicted_volume
-                bl_price = resp.baseline.price_per_litre
-                sel_price = resp.selected.price_per_litre
-                if bl_vol != 0:
-                    summary["delta_volume_units"] = round(sel_vol - bl_vol, 2)
-                    summary["delta_volume_pct"] = round((sel_vol - bl_vol) / bl_vol, 6)
-                summary["baseline_revenue"] = compute_revenue(bl_price, bl_vol, req.pack_size_internal, req.units_per_package_internal)
-                summary["selected_revenue"] = compute_revenue(sel_price, sel_vol, req.pack_size_internal, req.units_per_package_internal)
+                summary["delta_volume_in_litres"] = round(sel_vol - bl_vol, 2)
+                summary["delta_volume_pct"] = round((sel_vol - bl_vol) / bl_vol, 6)
             if resp.arc_elasticity is not None:
                 summary["arc_elasticity"] = resp.arc_elasticity
             return json.dumps(summary), ui_actions
@@ -718,15 +721,15 @@ def execute_tool(
                 s: dict[str, Any] = {"label": label, "warnings": resp.warnings}
                 if resp.baseline:
                     s["baseline_price"] = resp.baseline.price_per_litre
-                    s["baseline_volume"] = resp.baseline.volume_units
-                    s["baseline_revenue"] = compute_revenue(resp.baseline.price_per_litre, resp.baseline.volume_units, req.pack_size_internal, req.units_per_package_internal)
+                    s["baseline_volume_in_litres"] = resp.baseline.volume_units
+                    s["baseline_revenue"] = compute_revenue(resp.baseline.price_per_litre, resp.baseline.volume_units)
                 if resp.selected:
                     s["new_price"] = resp.selected.new_price_per_litre
-                    s["predicted_volume"] = resp.selected.predicted_volume_units
-                    s["delta_volume_units"] = resp.selected.delta_volume_units
+                    s["predicted_volume_in_litres"] = resp.selected.predicted_volume_units
+                    s["delta_volume_in_litres"] = resp.selected.delta_volume_units
                     s["delta_volume_pct"] = resp.selected.delta_volume_pct
                     s["elasticity"] = resp.selected.elasticity
-                    s["revenue"] = compute_revenue(resp.selected.new_price_per_litre, resp.selected.predicted_volume_units, req.pack_size_internal, req.units_per_package_internal)
+                    s["revenue"] = compute_revenue(resp.selected.new_price_per_litre, resp.selected.predicted_volume_units)
                 results[key] = s
             return json.dumps(results), ui_actions
 

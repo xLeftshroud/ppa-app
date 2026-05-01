@@ -14,7 +14,7 @@ class ScatterRequest(BaseModel):
 
 class ScatterPoint(BaseModel):
     price_per_litre: float
-    nielsen_total_volume: float
+    volume_in_litres: float
 
 
 class ScatterResponse(BaseModel):

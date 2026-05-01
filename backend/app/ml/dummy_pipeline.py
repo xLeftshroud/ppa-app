@@ -7,7 +7,9 @@ from sklearn.base import BaseEstimator, RegressorMixin
 class DummyDemandModel(BaseEstimator, RegressorMixin):
     """Log-log constant-elasticity demand model for demo purposes.
 
-    V(P) = base * (P / P_ref)^(-epsilon) * customer_mult * promo_mult * seasonal
+    Returns predicted volume in litres (matches real pipeline output unit).
+    V_packs(P) = base * (P / P_ref)^(-epsilon) * customer_mult * promo_mult * seasonal
+    V_litres   = V_packs * pack_size_internal * units_per_package_internal / 1000
     """
 
     CUSTOMER_MULTIPLIERS = {
@@ -46,9 +48,15 @@ class DummyDemandModel(BaseEstimator, RegressorMixin):
             week_sin = X["week_sin"].values.astype(float)
             volumes *= 1.0 + 0.05 * week_sin
 
-        if "pack_size_internal" in X.columns:
-            pack_sizes = X["pack_size_internal"].values.astype(float)
-            volumes *= pack_sizes / 330.0
+        if "pack_size_internal" in X.columns and "units_per_package_internal" in X.columns:
+            pack_volume_l = (
+                X["pack_size_internal"].values.astype(float)
+                * X["units_per_package_internal"].values.astype(float)
+                / 1000.0
+            )
+            volumes *= pack_volume_l
+        else:
+            volumes *= 2.64
 
-        volumes = np.maximum(0.0, np.round(volumes)).astype(float)
+        volumes = np.maximum(0.0, volumes).astype(float)
         return volumes

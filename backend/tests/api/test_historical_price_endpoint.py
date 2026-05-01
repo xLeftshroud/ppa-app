@@ -13,7 +13,7 @@ def test_historical_price_happy_path(client) -> None:
     assert resp.status_code == 200
     body = resp.json()
     assert body["yearweek"] == 202522
-    assert body["volume_units"] == 7900
+    assert body["volume_units"] == 20856
     assert abs(body["price_per_litre"] - 1.55) < 1e-6
 
 

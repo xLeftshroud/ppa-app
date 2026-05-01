@@ -99,15 +99,15 @@ export function ResultsCard({ isLoading }: { isLoading: boolean }) {
       <CardContent>
         <div className="grid grid-cols-4 gap-x-4 gap-y-3">
           {/* Row 1: Price */}
-          <Cell label="Baseline Price" value={fmt(bPrice)} />
-          <Cell label="New Price" value={fmt(nPrice)} />
-          <Cell label="Price Change" value={priceChange != null ? `${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(4)}` : "N/A"} tone={priceChange} testId="price-change" />
+          <Cell label="Baseline Price (£)" value={fmt(bPrice)} />
+          <Cell label="New Price (£)" value={fmt(nPrice)} />
+          <Cell label="Price Change (£)" value={priceChange != null ? `${priceChange >= 0 ? "+" : ""}${priceChange.toFixed(4)}` : "N/A"} tone={priceChange} testId="price-change" />
           <Cell label="Price Change %" value={priceChangePct != null ? fmtPctRaw(priceChangePct) : "N/A"} tone={priceChangePct} testId="price-change-pct" />
 
           {/* Row 2: Volume */}
-          <Cell label="Baseline Volume" value={fmtVol(bVol)} />
-          <Cell label="New Volume" value={fmtVol(nVol)} />
-          <Cell label="Volume Change" value={volChange != null ? `${volChange >= 0 ? "+" : ""}${Math.round(volChange).toLocaleString()}` : "N/A"} tone={volChange} testId="volume-change" />
+          <Cell label="Baseline Volume (L)" value={fmtVol(bVol)} />
+          <Cell label="New Volume (L)" value={fmtVol(nVol)} />
+          <Cell label="Volume Change (L)" value={volChange != null ? `${volChange >= 0 ? "+" : ""}${Math.round(volChange).toLocaleString()}` : "N/A"} tone={volChange} testId="volume-change" />
           <Cell label="Volume Change %" value={fmtPct(volChangePct)} tone={volChangePct} testId="volume-change-pct" />
 
           {/* Row 3: Elasticity */}

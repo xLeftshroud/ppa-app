@@ -15,6 +15,7 @@ from sklearn.pipeline import Pipeline
 
 from app.ml.dummy_pipeline import DummyDemandModel
 from app.services import pipeline_service, price_range_service
+from app.ml.features import build_features
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SAMPLE_CSV = FIXTURES_DIR / "sample.csv"
@@ -57,7 +58,7 @@ def sample_csv_bytes() -> bytes:
 
 @pytest.fixture
 def sample_df() -> pd.DataFrame:
-    return pd.read_csv(SAMPLE_CSV)
+    return build_features(pd.read_csv(SAMPLE_CSV))
 
 
 @pytest.fixture
